@@ -21,13 +21,15 @@ module SeamlessDatabasePool
       # :random). It will define method for around filter and apply it
       # with `around_filter`. You can also pass any options supported by
       # `around_filter`.
-      def use_database_pool(pool, options = {})
-        method_name = :"use_#{pool}_database_pool"
+      def use_database_pool(*args)
+        options = args.extract_options!
+        pool = args.first
+        method_name = :"use_#{"#{pool}_" if pool}database_pool"
         unless method_defined?(method_name)
           define_method(method_name) do |&block|
             read_pool_method = session[:next_request_db_connection]
             session.delete(:next_request_db_connection) if read_pool_method
-            read_pool_method ||= pool
+            read_pool_method ||= pool || custom_database_pool
             SeamlessDatabasePool.set_read_only_connection_type(read_pool_method) do
               instance_eval(&block)
             end
@@ -40,7 +42,7 @@ module SeamlessDatabasePool
       end
 
       def skip_use_database_pool(pool, options = {})
-        method_name = :"use_#{pool}_database_pool"
+        method_name = :"use_#{"#{pool}_" if pool}_database_pool"
         skip_around_filter method_name, options
       end
     end

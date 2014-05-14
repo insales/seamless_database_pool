@@ -24,9 +24,11 @@ describe "SeamlessDatabasePool::ControllerFilter" do
         options
       end
 
-      def base_action
+      def result
         ::SeamlessDatabasePool.read_only_connection_type
       end
+
+      alias_method :base_action, :result
     end
 
     class TestApplicationController < TestAbstractController
@@ -38,26 +40,18 @@ describe "SeamlessDatabasePool::ControllerFilter" do
 
       use_database_pool :persistent, :only => :read
 
-      def read
-        ::SeamlessDatabasePool.read_only_connection_type
-      end
-
-      def other
-        ::SeamlessDatabasePool.read_only_connection_type
-      end
+      alias_method :read, :result
+      alias_method :other, :result
     end
 
     class TestOtherController < TestBaseController
-      use_database_pool :random, except: [:read, :edit, :save, :redirect_master_action]
+      use_database_pool :random, except: [:read, :edit, :save, :redirect_master_action, :custom]
       use_database_pool :master, only: [:edit, :save, :redirect_master_action]
+      use_database_pool only: [:custom]
 
-      def edit
-        ::SeamlessDatabasePool.read_only_connection_type
-      end
-
-      def save
-        ::SeamlessDatabasePool.read_only_connection_type
-      end
+      alias_method :edit, :result
+      alias_method :save, :result
+      alias_method :custom, :result
 
       def redirect_master_action
         redirect_to(:action => :read)
@@ -65,6 +59,10 @@ describe "SeamlessDatabasePool::ControllerFilter" do
 
       def redirect_read_action
         redirect_to(:action => :read)
+      end
+
+      def custom_database_pool
+        :custom_pool
       end
     end
   end
@@ -127,5 +125,11 @@ describe "SeamlessDatabasePool::ControllerFilter" do
     controller.process('redirect_read_action').should == {:action => :read}
 
     controller.process('read').should == :persistent
+  end
+
+  context 'if use_database_pool is called without pool' do
+    it 'should use custom_database_pool to get pool' do
+      controller.process('custom').should == :custom_pool
+    end
   end
 end
