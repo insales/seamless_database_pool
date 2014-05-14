@@ -44,27 +44,28 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
-      s.add_runtime_dependency(%q<activerecord>, [">= 3.0.20"])
-      s.add_development_dependency(%q<rspec>, [">= 2.0"])
-      s.add_development_dependency(%q<jeweler>, [">= 0"])
-      s.add_development_dependency(%q<sqlite3>, [">= 0"])
-      s.add_development_dependency(%q<mysql>, [">= 0"])
-      s.add_development_dependency(%q<pg>, [">= 0"])
+      s.add_runtime_dependency('activerecord', ['>= 3.0.20'])
+      s.add_runtime_dependency('thread_safe', ['>= 0.3'])
+      s.add_development_dependency('rspec', ['>= 2.0'])
+      s.add_development_dependency('jeweler', ['>= 0'])
+      s.add_development_dependency('sqlite3', ['>= 0'])
+      s.add_development_dependency('mysql', ['>= 0'])
+      s.add_development_dependency('pg', ['>= 0'])
     else
-      s.add_dependency(%q<activerecord>, [">= 3.0.20"])
-      s.add_dependency(%q<rspec>, [">= 2.0"])
-      s.add_dependency(%q<jeweler>, [">= 0"])
-      s.add_dependency(%q<sqlite3>, [">= 0"])
-      s.add_dependency(%q<mysql>, [">= 0"])
-      s.add_dependency(%q<pg>, [">= 0"])
+      s.add_dependency('activerecord', ['>= 3.0.20'])
+      s.add_dependency('rspec', ['>= 2.0'])
+      s.add_dependency('jeweler', ['>= 0'])
+      s.add_dependency('sqlite3', ['>= 0'])
+      s.add_dependency('mysql', ['>= 0'])
+      s.add_dependency('pg', ['>= 0'])
     end
   else
-    s.add_dependency(%q<activerecord>, [">= 3.0.20"])
-    s.add_dependency(%q<rspec>, [">= 2.0"])
-    s.add_dependency(%q<jeweler>, [">= 0"])
-    s.add_dependency(%q<sqlite3>, [">= 0"])
-    s.add_dependency(%q<mysql>, [">= 0"])
-    s.add_dependency(%q<pg>, [">= 0"])
+    s.add_dependency('activerecord', ['>= 3.0.20'])
+    s.add_dependency('rspec', ['>= 2.0'])
+    s.add_dependency('jeweler', ['>= 0'])
+    s.add_dependency('sqlite3', ['>= 0'])
+    s.add_dependency('mysql', ['>= 0'])
+    s.add_dependency('pg', ['>= 0'])
   end
 end
 
