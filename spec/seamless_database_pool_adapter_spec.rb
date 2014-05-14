@@ -139,7 +139,7 @@ describe "SeamlessDatabasePoolAdapter" do
       expect(master_connection).to receive(:commit_db_transaction)
       expect(master_connection).to receive(:select).with('Transaction SQL', nil)
       expect(read_connection_1).to receive(:select).with('SQL 1', nil)
-      expect(read_connection_1).to receive(:select).with('SQL 2', nil)
+      expect(master_connection).to receive(:select).with('SQL 2', nil)
     
       SeamlessDatabasePool.use_persistent_read_connection do
         connection.send(:select, 'SQL 1', nil)
