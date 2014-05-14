@@ -1,3 +1,4 @@
+require 'thread_safe'
 require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'connection_statistics.rb')
 require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'controller_filter.rb')
 require File.join(File.dirname(__FILE__), 'active_record', 'connection_adapters', 'seamless_database_pool_adapter.rb')
@@ -24,7 +25,14 @@ module SeamlessDatabasePool
   
   READ_CONNECTION_METHODS = [:master, :persistent, :random]
 
+  # Map of `connection.object_id => connection_name`.
+  # We can't store connection name in connection object, because LogSubscriber
+  # receives only connection_id, which we need to map to connection name.
+  @connection_names = ThreadSafe::Hash.new
+
   class << self
+    attr_reader :connection_names
+    
     # Call this method to use a random connection from the read pool for every select statement.
     # This method is good if your replication is very fast. Otherwise there is a chance you could
     # get inconsistent results from one request to the next. This can result in mysterious failures

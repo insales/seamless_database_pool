@@ -15,8 +15,10 @@ module ActiveRecord
         master_connection = send("#{master_config[:adapter]}_connection".to_sym, master_config)
         pool_weights[master_connection] = master_config[:pool_weight].to_i if master_config[:pool_weight].to_i > 0
         
+        SeamlessDatabasePool.connection_names[master_connection.object_id] = 'master'
+        
         read_connections = []
-        config[:read_pool].each do |read_config|
+        config[:read_pool].each_with_index do |read_config, i|
           read_config = default_config.merge(read_config).with_indifferent_access
           read_config[:pool_weight] = read_config[:pool_weight].to_i
           if read_config[:pool_weight] > 0
@@ -25,6 +27,7 @@ module ActiveRecord
               conn = send("#{read_config[:adapter]}_connection".to_sym, read_config)
               read_connections << conn
               pool_weights[conn] = read_config[:pool_weight]
+              SeamlessDatabasePool.connection_names[conn.object_id] = "slave_#{i}"
             rescue Exception => e
               if logger
                 logger.error("Error connecting to read connection #{read_config.inspect}")
