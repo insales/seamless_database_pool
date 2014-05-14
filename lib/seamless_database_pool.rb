@@ -111,7 +111,8 @@ module SeamlessDatabasePool
       end
     end
 
-    # This method is provided as a way to change the persistent connection when it fails and a new one is substituted.
+    # This method is provided as a way to change the persistent connection
+    # when it fails and a new one is substituted.
     def set_persistent_read_connection(pool_connection, read_connection)
       connection_type = Thread.current[:read_only_connection]
       connection_type[pool_connection] = read_connection if connection_type.kind_of?(Hash)

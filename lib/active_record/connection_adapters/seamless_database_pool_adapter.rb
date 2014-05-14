@@ -187,9 +187,8 @@ module ActiveRecord
       end
 
       def transaction(options = {})
-        use_master_connection do
-          super
-        end
+        SeamlessDatabasePool.use_master_connection
+        super
       end
 
       def visitor=(visitor)
