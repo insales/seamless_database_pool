@@ -47,6 +47,7 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency('activerecord', ['>= 3.0.20'])
       s.add_runtime_dependency('thread_safe', ['>= 0.3'])
       s.add_development_dependency('rspec', ['>= 2.0'])
+      s.add_development_dependency('actionpack', ['>= 3.0'])
       s.add_development_dependency('jeweler', ['>= 0'])
       s.add_development_dependency('sqlite3', ['>= 0'])
       s.add_development_dependency('mysql', ['>= 0'])
