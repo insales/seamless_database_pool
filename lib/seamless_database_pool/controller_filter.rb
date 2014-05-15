@@ -41,9 +41,17 @@ module SeamlessDatabasePool
         around_filter method_name, options
       end
 
-      def skip_use_database_pool(pool, options = {})
-        method_name = :"use_#{"#{pool}_" if pool}_database_pool"
-        skip_around_filter method_name, options
+      def skip_use_database_pool(*args)
+        options = args.extract_options!
+        pool = args.first
+        if pool
+          skip_around_filter :"use_#{pool}_database_pool", options
+        else
+          READ_CONNECTION_METHODS.each do |pool|
+            skip_around_filter :"use_#{pool}_database_pool", options
+          end
+          skip_around_filter :use_database_pool, options
+        end
       end
     end
 
