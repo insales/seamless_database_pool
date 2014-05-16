@@ -352,6 +352,7 @@ module ActiveRecord
           if proxy_type == :read && !using_master_connection?
             unless connection.active?
               suppress_read_connection(connection, 30)
+              SeamlessDatabasePool.set_persistent_read_connection(self, nil)
               connection = current_read_connection
               SeamlessDatabasePool.set_persistent_read_connection(self, connection)
             end

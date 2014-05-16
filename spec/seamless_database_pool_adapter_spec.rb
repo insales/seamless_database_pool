@@ -292,6 +292,7 @@ describe "SeamlessDatabasePoolAdapter" do
       read_connection_1.should_receive(:select).with('SQL').and_raise("Fail")
       read_connection_1.should_receive(:active?).and_return(false)
       pool_connection.should_receive(:suppress_read_connection).with(read_connection_1, 30)
+      SeamlessDatabasePool.should_receive(:set_persistent_read_connection).with(pool_connection, nil)
       SeamlessDatabasePool.should_receive(:set_persistent_read_connection).with(pool_connection, read_connection_2)
       read_connection_2.should_receive(:select).with('SQL').and_return(:results)
       pool_connection.send(:select, 'SQL').should == :results
