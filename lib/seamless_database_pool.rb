@@ -122,6 +122,11 @@ module SeamlessDatabasePool
       Thread.current[:read_only_connection] = nil
     end
 
+    def allow_slave_connection?
+      type = Thread.current[:read_only_connection]
+      type && :master != type
+    end
+
     # Get the connection adapter class for an adapter name. The class will be loaded from
     # ActiveRecord::ConnectionAdapters::NameAdapter where Name is the camelized version of the name.
     # If the adapter class does not fit this pattern (i.e. sqlite3 => SQLite3Adapter), then add

@@ -11,8 +11,8 @@ module ActiveRecord
         default_config.delete(:pool_adapter)
 
         master_config = default_config.merge(config[:master]).with_indifferent_access
-        establish_adapter(master_config[:adapter])
-        master_connection = send("#{master_config[:adapter]}_connection".to_sym, master_config)
+        connection_method = establish_adapter(master_config[:adapter])
+        master_connection = send(connection_method, master_config)
         pool_weights[master_connection] = master_config[:pool_weight].to_i if master_config[:pool_weight].to_i > 0
         SeamlessDatabasePool.connection_names[master_connection.object_id] = 'master'
 
@@ -22,8 +22,8 @@ module ActiveRecord
           read_config[:pool_weight] = read_config[:pool_weight].to_i
           if read_config[:pool_weight] > 0
             begin
-              establish_adapter(read_config[:adapter])
-              conn = send("#{read_config[:adapter]}_connection".to_sym, read_config)
+              connection_method = establish_adapter(read_config[:adapter])
+              conn = send(connection_method, read_config)
               read_connections << conn
               pool_weights[conn] = read_config[:pool_weight]
               SeamlessDatabasePool.connection_names[conn.object_id] = "slave_#{i}"
@@ -43,23 +43,8 @@ module ActiveRecord
       def establish_adapter(adapter)
         raise AdapterNotSpecified.new("database configuration does not specify adapter") unless adapter
         raise AdapterNotFound.new("database pool must specify adapters") if adapter == 'seamless_database_pool'
-
-        begin
-          require 'rubygems'
-          gem "activerecord-#{adapter}-adapter"
-          require "active_record/connection_adapters/#{adapter}_adapter"
-        rescue LoadError
-          begin
-            require "active_record/connection_adapters/#{adapter}_adapter"
-          rescue LoadError
-            raise "Please install the #{adapter} adapter: `gem install activerecord-#{adapter}-adapter` (#{$!})"
-          end
-        end
-
-        adapter_method = "#{adapter}_connection"
-        if !respond_to?(adapter_method)
-          raise AdapterNotFound, "database configuration specifies nonexistent #{adapter} adapter"
-        end
+        require "active_record/connection_adapters/#{adapter}_adapter"
+        "#{adapter}_connection".to_sym
       end
     end
 
@@ -110,33 +95,33 @@ module ActiveRecord
 
           klass = Class.new(self)
           master_methods.each do |method_name|
-            klass.class_eval <<-EOS, __FILE__, __LINE__ + 1
+            klass.class_eval <<-RUBY, __FILE__, __LINE__ + 1
               def #{method_name}(*args, &block)
                 use_master_connection do
                   return proxy_connection_method(master_connection, :#{method_name}, :master, *args, &block)
                 end
               end
-            EOS
+            RUBY
           end
 
           clear_cache_methods.each do |method_name|
-            klass.class_eval <<-EOS, __FILE__, __LINE__ + 1
+            klass.class_eval <<-RUBY, __FILE__, __LINE__ + 1
               def #{method_name}(*args, &block)
                 clear_query_cache if query_cache_enabled
                 use_master_connection do
                   return proxy_connection_method(master_connection, :#{method_name}, :master, *args, &block)
                 end
               end
-            EOS
+            RUBY
           end
 
           read_only_methods.each do |method_name|
-            klass.class_eval <<-EOS, __FILE__, __LINE__ + 1
+            klass.class_eval <<-RUBY, __FILE__, __LINE__ + 1
               def #{method_name}(*args, &block)
                 connection = @use_master ? master_connection : current_read_connection
                 proxy_connection_method(connection, :#{method_name}, :read, *args, &block)
               end
-            EOS
+            RUBY
           end
           klass.send :protected, :select
 
@@ -179,7 +164,7 @@ module ActiveRecord
 
       # Get the pool weight of a connection
       def pool_weight(connection)
-        return @weighted_read_connections.select{|conn| conn == connection}.size
+        return @weighted_read_connections.select { |conn| conn == connection }.size
       end
 
       def requires_reloading?
@@ -192,7 +177,7 @@ module ActiveRecord
       end
 
       def visitor=(visitor)
-        all_connections.each{|conn| conn.visitor = visitor}
+        all_connections.each { |conn| conn.visitor = visitor }
       end
 
       def visitor
@@ -200,30 +185,37 @@ module ActiveRecord
       end
 
       def active?
-        active = true
-        do_to_connections {|conn| active &= conn.active?}
-        return active
+        if SeamlessDatabasePool.allow_slave_connection?
+          do_to_connections(true) { |conn| return true if conn.active? }
+          false
+        else
+          master_connection.active?
+        end
       end
 
       def reconnect!
-        do_to_connections {|conn| conn.reconnect!}
+        do_to_connections { |conn| conn.reconnect! }
       end
 
       def disconnect!
-        do_to_connections {|conn| conn.disconnect!}
+        do_to_connections { |conn| conn.disconnect! }
       end
 
       def reset!
-        do_to_connections {|conn| conn.reset!}
+        do_to_connections { |conn| conn.reset! }
       end
 
       def verify!(*ignored)
-        do_to_connections {|conn| conn.verify!(*ignored)}
+        if SeamlessDatabasePool.allow_slave_connection?
+          do_to_connections(true) { |conn| conn.verify!(*ignored) }
+        else
+          master_connection.verify!
+        end
       end
 
       def reset_runtime
         total = 0.0
-        do_to_connections {|conn| total += conn.reset_runtime}
+        do_to_connections { |conn| total += conn.reset_runtime }
         total
       end
 
@@ -335,7 +327,8 @@ module ActiveRecord
           # No connections available so we might as well try them all again
           reset_available_read_connections
         else
-          @logger.warn("Removing #{conn.inspect} from the connection pool for #{expire} seconds") if @logger
+          name = SeamlessDatabasePool.connection_names[conn.object_id]
+          @logger.warn("Removing #{name} from the connection pool for #{expire} seconds") if @logger
           # Available connections will now not include the suppressed connection for a while
           @available_read_connections.push(AvailableConnections.new(connections, conn, expire.seconds.from_now))
         end
@@ -346,7 +339,7 @@ module ActiveRecord
       def proxy_connection_method(connection, method, proxy_type, *args, &block)
         begin
           connection.send(method, *args, &block)
-        rescue => e
+        rescue
           # If the statement was a read statement and it wasn't forced against the master connection
           # try to reconnect if the connection is dead and then re-run the statement.
           if proxy_type == :read && !using_master_connection?
@@ -358,19 +351,19 @@ module ActiveRecord
             end
             proxy_connection_method(connection, method, :retry, *args, &block)
           else
-            raise e
+            raise
           end
         end
       end
 
       # Yield a block to each connection in the pool. If the connection is dead, ignore the error
       # unless it is the master connection
-      def do_to_connections
+      def do_to_connections(suppress = false)
         all_connections.each do |conn|
           begin
             yield(conn)
-          rescue => e
-            raise e if conn == master_connection
+          rescue
+            raise if conn == master_connection && !suppress
           end
         end
       end
