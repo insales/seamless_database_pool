@@ -202,9 +202,8 @@ module ActiveRecord
         if SeamlessDatabasePool.read_only_connection_type == :master
           @master_connection.active?
         else
-          active = true
-          do_to_connections {|conn| active &= conn.active?}
-          active
+          do_to_connections(true) { |conn| return true if conn.active? }
+          false
         end
       end
 
@@ -224,7 +223,7 @@ module ActiveRecord
         if SeamlessDatabasePool.read_only_connection_type == :master
           @master_connection.verify!(*ignored)
         else
-          do_to_connections {|conn| conn.verify!(*ignored)}
+          do_to_connections(true) { |conn| conn.verify!(*ignored) }
         end
       end
 
@@ -380,12 +379,12 @@ module ActiveRecord
 
       # Yield a block to each connection in the pool. If the connection is dead, ignore the error
       # unless it is the master connection
-      def do_to_connections
+      def do_to_connections(suppress = false)
         all_connections.each do |conn|
           begin
             yield(conn)
           rescue => e
-            raise e if conn == master_connection
+            raise e if conn == master_connection && !suppress
           end
         end
         nil
