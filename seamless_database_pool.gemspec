@@ -17,6 +17,6 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency(%q<activerecord>, [">= 3.2.0"])
   spec.add_development_dependency(%q<rspec>, [">= 2.0"])
   spec.add_development_dependency(%q<sqlite3>, [">= 0"])
-  spec.add_development_dependency(%q<mysql>, [">= 0"])
+  spec.add_development_dependency(%q<mysql2>, [">= 0"])
   spec.add_development_dependency(%q<pg>, [">= 0"])
 end
