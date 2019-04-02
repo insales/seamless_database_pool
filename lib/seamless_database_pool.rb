@@ -3,6 +3,7 @@ require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'connection_
 require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'controller_filter.rb')
 require File.join(File.dirname(__FILE__), 'active_record', 'connection_adapters', 'seamless_database_pool_adapter.rb')
 require File.join(File.dirname(__FILE__), 'seamless_database_pool', 'railtie.rb') if defined?(Rails::Railtie)
+require 'seamless_database_pool/simple_controller_filter'
 
 $LOAD_PATH << File.dirname(__FILE__) unless $LOAD_PATH.include?(File.dirname(__FILE__))
 
