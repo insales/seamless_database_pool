@@ -15,8 +15,10 @@ module ActiveRecord
         master_connection = send("#{master_config[:adapter]}_connection".to_sym, master_config)
         pool_weights[master_connection] = master_config[:pool_weight].to_i if master_config[:pool_weight].to_i > 0
         
+        SeamlessDatabasePool.connection_names[master_connection.object_id] = 'master'
+        
         read_connections = []
-        config[:read_pool].each do |read_config|
+        config[:read_pool].each_with_index do |read_config, i|
           read_config = default_config.merge(read_config).with_indifferent_access
           read_config[:pool_weight] = read_config[:pool_weight].to_i
           if read_config[:pool_weight] > 0
@@ -25,6 +27,7 @@ module ActiveRecord
               conn = send("#{read_config[:adapter]}_connection".to_sym, read_config)
               read_connections << conn
               pool_weights[conn] = read_config[:pool_weight]
+              SeamlessDatabasePool.connection_names[conn.object_id] = "slave_#{i}"
             rescue Exception => e
               if logger
                 logger.error("Error connecting to read connection #{read_config.inspect}")
@@ -183,9 +186,8 @@ module ActiveRecord
       end
       
       def transaction(options = {})
-        use_master_connection do
-          super
-        end
+        SeamlessDatabasePool.use_master_connection
+        super
       end
       
       def visitor=(visitor)
@@ -200,9 +202,8 @@ module ActiveRecord
         if SeamlessDatabasePool.read_only_connection_type == :master
           @master_connection.active?
         else
-          active = true
-          do_to_connections {|conn| active &= conn.active?}
-          active
+          do_to_connections(true) { |conn| return true if conn.active? }
+          false
         end
       end
 
@@ -222,7 +223,7 @@ module ActiveRecord
         if SeamlessDatabasePool.read_only_connection_type == :master
           @master_connection.verify!(*ignored)
         else
-          do_to_connections {|conn| conn.verify!(*ignored)}
+          do_to_connections(true) { |conn| conn.verify!(*ignored) }
         end
       end
 
@@ -365,6 +366,7 @@ module ActiveRecord
           if proxy_type == :read && !using_master_connection?
             unless connection.active?
               suppress_read_connection(connection, 30)
+              SeamlessDatabasePool.set_persistent_read_connection(self, nil)
               connection = current_read_connection
               SeamlessDatabasePool.set_persistent_read_connection(self, connection)
             end
@@ -377,12 +379,12 @@ module ActiveRecord
 
       # Yield a block to each connection in the pool. If the connection is dead, ignore the error
       # unless it is the master connection
-      def do_to_connections
+      def do_to_connections(suppress = false)
         all_connections.each do |conn|
           begin
             yield(conn)
           rescue => e
-            raise e if conn == master_connection
+            raise e if conn == master_connection && !suppress
           end
         end
         nil
