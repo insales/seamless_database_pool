@@ -349,7 +349,8 @@ module ActiveRecord
           # No connections available so we might as well try them all again
           reset_available_read_connections
         else
-          @logger.warn("Removing #{conn.inspect} from the connection pool for #{expire} seconds") if @logger
+          name = SeamlessDatabasePool.connection_names[conn.object_id]
+          @logger.warn("Removing #{name} from the connection pool for #{expire} seconds") if @logger
           # Available connections will now not include the suppressed connection for a while
           @available_read_connections.push(AvailableConnections.new(connections, conn, expire.seconds.from_now))
         end
