@@ -33,7 +33,7 @@ module SeamlessDatabasePool
 
       def skip_use_database_pool(pool = nil, **options)
         if pool
-          skip_around_filter :"use_#{pool}_database_pool", options
+          skip_around_action :"use_#{pool}_database_pool", options
         else
           READ_CONNECTION_METHODS.each { |pool| skip_use_database_pool(pool, options) }
         end
