@@ -28,7 +28,7 @@ module SeamlessDatabasePool
           SeamlessDatabasePool.set_read_only_connection_type(read_pool_method, &block)
         end
         protected method_name
-        around_filter method_name, options
+        around_action method_name, options
       end
 
       def skip_use_database_pool(pool = nil, **options)
