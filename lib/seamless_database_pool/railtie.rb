@@ -14,7 +14,15 @@ module SeamlessDatabasePool
           # Override seamless_database_pool configuration so db:* rake tasks work as expected.
           module DatabaseConfiguration
             def configurations
-              SeamlessDatabasePool.master_database_configuration(super.deep_dup)
+              if Rails::VERSION::MAJOR >= 6
+                # Rails 6 (and above) compatible behaviour
+                ActiveRecord::DatabaseConfigurations.new(
+                  SeamlessDatabasePool.master_database_configuration(super.deep_dup)
+                )
+              else
+                # Before Rails 6 compatible behaviour
+                SeamlessDatabasePool.master_database_configuration(super.deep_dup)
+              end
             end
           end
           ActiveRecord::Base.singleton_class.prepend(DatabaseConfiguration)
