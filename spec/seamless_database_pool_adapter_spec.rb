@@ -214,18 +214,19 @@ describe "SeamlessDatabasePoolAdapter" do
         end
       end
 
-      it "should fork active? to all connections and return true if all are up" do
-        expect(master_connection).to receive(:active?).and_return(true)
+      it "should fork active? to all connections and return true if any is up" do
+        # this is different from upstream - it has `all?` semantic instead of `any?`
+        allow(master_connection).to receive(:active?).and_return(false)
         expect(read_connection_1).to receive(:active?).and_return(true)
-        expect(read_connection_2).to receive(:active?).and_return(true)
-        pool_connection.active?.should == true
+        allow(read_connection_2).to receive(:active?).and_return(false)
+        expect(pool_connection).to be_active
       end
 
-      it "should fork active? to all connections and return false if one is down" do
-        expect(master_connection).to receive(:active?).and_return(true)
-        expect(read_connection_1).to receive(:active?).and_return(true)
+      it "should fork active? to all connections and return false if all are down" do
+        allow(master_connection).to receive(:active?).and_return(false)
+        expect(read_connection_1).to receive(:active?).and_return(false)
         expect(read_connection_2).to receive(:active?).and_return(false)
-        pool_connection.active?.should == false
+        expect(pool_connection).not_to be_active
       end
 
       it "should fork verify! to all connections" do
