@@ -20,14 +20,14 @@ module ActiveRecord
             result
           end
         EOS
+      end
 
-        %w(update insert delete reload create_table drop_table add_index remove_index transaction).each do |write_method|
-          class_eval <<-EOS, __FILE__, __LINE__ + 1
-            def #{write_method}(*args, &block)
-              raise NotImplementedError.new("Master method '#{write_method}' called on read only connection")
-            end
-          EOS
-        end
+      %w(update insert delete reload create_table drop_table add_index remove_index transaction).each do |write_method|
+        class_eval <<-EOS, __FILE__, __LINE__ + 1
+          def #{write_method}(*args, &block)
+            raise NotImplementedError.new("Master method '#{write_method}' called on read only connection")
+          end
+        EOS
       end
 
       def initialize(connection)
