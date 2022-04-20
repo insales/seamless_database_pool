@@ -24,3 +24,9 @@ RSpec.configure do |config|
   config.expect_with(:rspec) { |c| c.syntax = [:should, :expect] }
   config.mock_with(:rspec) { |c| c.syntax = [:should, :expect] }
 end
+
+# enable ruby 2.7 warnings
+if defined?(Warning) && Warning.respond_to?(:[]=)
+  $VERBOSE = true
+  Warning[:deprecated] = true
+end
