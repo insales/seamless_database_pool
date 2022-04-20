@@ -1,3 +1,13 @@
+## Fork features:
+- Log connection names
+- Controller helper
+- Only use master after any transaction (upstream sends transactions to master and then switches back)
+- Connection is `active?` if any of the connections is active, including master (not all like in upstream)
+- Support for rails 6, rails 7
+
+
+# Original changelog:
+
 ## 1.0.20
 
 * Remove calls to `alias_method_chain` for Rails 5.1 compatibility (thanks yukideluxe & wjordan)

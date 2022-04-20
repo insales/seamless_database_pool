@@ -202,7 +202,10 @@ module ActiveRecord
         if SeamlessDatabasePool.read_only_connection_type == :master
           @master_connection.active?
         else
-          do_to_connections(true) { |conn| return true if conn.active? }
+          do_to_connections(true) do |conn|
+            # NB: master connection is here too
+            return true if conn.active?
+          end
           false
         end
       end
