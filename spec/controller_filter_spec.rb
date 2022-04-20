@@ -14,7 +14,7 @@ describe "SeamlessDatabasePool::ControllerFilter" do
         send action
       end
 
-      def redirect_to (options = {}, response_status = {})
+      def redirect_to(options = {}, response_status = {})
         options
       end
 

@@ -3,22 +3,22 @@ require 'spec_helper'
 describe SeamlessDatabasePool::ConnectionStatistics do
   module SeamlessDatabasePool
     class ConnectionStatisticsTester
-      def insert (sql, name = nil)
+      def insert(sql, name = nil)
         "INSERT #{sql}/#{name}"
       end
 
-      def update (sql, name = nil)
+      def update(sql, name = nil)
         execute(sql)
         "UPDATE #{sql}/#{name}"
       end
 
-      def execute (sql, name = nil)
+      def execute(sql, name = nil)
         "EXECUTE #{sql}/#{name}"
       end
 
       protected
 
-      def select (sql, name = nil, binds = [])
+      def select(sql, name = nil, binds = [])
         "SELECT #{sql}/#{name}"
       end
 
@@ -72,5 +72,4 @@ describe SeamlessDatabasePool::ConnectionStatistics do
     connection.reset_connection_statistics
     connection.connection_statistics.should == {}
   end
-
 end

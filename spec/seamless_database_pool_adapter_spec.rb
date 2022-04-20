@@ -2,7 +2,7 @@ require 'spec_helper'
 
 module SeamlessDatabasePool
   class MockConnection < ActiveRecord::ConnectionAdapters::AbstractAdapter
-    def initialize (name)
+    def initialize(name)
       @name = name
     end
 
@@ -26,10 +26,10 @@ module SeamlessDatabasePool
   end
 
   class MockMasterConnection < MockConnection
-    def insert (sql, name = nil); end
-    def update (sql, name = nil); end
-    def execute (sql, name = nil); end
-    def columns (table_name, name = nil); end
+    def insert(sql, name = nil); end
+    def update(sql, name = nil); end
+    def execute(sql, name = nil); end
+    def columns(table_name, name = nil); end
   end
 end
 

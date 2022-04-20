@@ -41,7 +41,7 @@ module SeamlessDatabasePool
     end
 
     protected
-    
+
     def redirect_to(*)
       if SeamlessDatabasePool.read_only_connection_type(nil) == :master
         use_master_db_connection_on_next_request

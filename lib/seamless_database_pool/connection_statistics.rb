@@ -39,7 +39,7 @@ module SeamlessDatabasePool
     end
 
     def increment_connection_statistic(method)
-      if @counting_pool_statistics
+      if defined?(@counting_pool_statistics) && @counting_pool_statistics
         yield
       else
         begin
