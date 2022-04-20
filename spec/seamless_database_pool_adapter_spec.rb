@@ -69,11 +69,13 @@ describe "SeamlessDatabasePoolAdapter ActiveRecord::Base extension" do
     expect(ActiveRecord::Base).to receive(:establish_adapter).with('writer')
     expect(ActiveRecord::Base).to receive(:establish_adapter).with('reader').twice
 
-    ActiveRecord::Base.seamless_database_pool_connection(options).should == pool_connection
+    expect(ActiveRecord::Base.seamless_database_pool_connection(options)).to eq pool_connection
   end
 
   it "should raise an error if the adapter would be recursive" do
-    lambda{ActiveRecord::Base.seamless_database_pool_connection('seamless_database_pool').should_raise(ActiveRecord::AdapterNotFound)}
+    expect do
+      ActiveRecord::Base.seamless_database_pool_connection({ master: { adapter: 'seamless_database_pool' } })
+    end.to raise_error(ActiveRecord::AdapterNotFound)
   end
 end
 
@@ -90,45 +92,45 @@ describe "SeamlessDatabasePoolAdapter" do
 
   it "should be able to be converted to a string" do
     pool_connection.to_s.should =~ /\A#<ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter::Abstract:0x[0-9a-f]+ 3 connections>\z/
-    pool_connection.inspect.should == pool_connection.to_s
+    expect(pool_connection.inspect).to eq pool_connection.to_s
   end
 
   context "selecting a connection from the pool" do
     it "should initialize the connection pool" do
-      pool_connection.master_connection.should == master_connection
-      pool_connection.read_connections.should == [read_connection_1, read_connection_2]
-      pool_connection.all_connections.should == [master_connection, read_connection_1, read_connection_2]
-      pool_connection.pool_weight(master_connection).should == 1
-      pool_connection.pool_weight(read_connection_1).should == 1
-      pool_connection.pool_weight(read_connection_2).should == 2
+      expect(pool_connection.master_connection).to eq master_connection
+      expect(pool_connection.read_connections).to eq [read_connection_1, read_connection_2]
+      expect(pool_connection.all_connections).to eq [master_connection, read_connection_1, read_connection_2]
+      expect(pool_connection.pool_weight(master_connection)).to eq 1
+      expect(pool_connection.pool_weight(read_connection_1)).to eq 1
+      expect(pool_connection.pool_weight(read_connection_2)).to eq 2
     end
 
     it "should return the current read connection" do
       expect(SeamlessDatabasePool).to receive(:read_only_connection).with(pool_connection).and_return(:current)
-      pool_connection.current_read_connection.should == :current
+      expect(pool_connection.current_read_connection).to eq :current
     end
 
     it "should select a random read connection" do
       mock_connection = double(:connection)
-      mock_connection.stub(:active? => true)
+      allow(mock_connection).to receive(:active?).and_return(true)
       expect(pool_connection).to receive(:available_read_connections).and_return([:fake1, :fake2, mock_connection])
       expect(pool_connection).to receive(:rand).with(3).and_return(2)
-      pool_connection.random_read_connection.should == mock_connection
+      expect(pool_connection.random_read_connection).to eq mock_connection
     end
 
     it "should select the master connection if the read pool is empty" do
       expect(pool_connection).to receive(:available_read_connections).and_return([])
-      pool_connection.random_read_connection.should == master_connection
+      expect(pool_connection.random_read_connection).to eq master_connection
     end
 
     it "should use the master connection in a block" do
       connection_class = ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter.adapter_class(master_connection)
       connection = connection_class.new(nil, double(:logger), master_connection, [read_connection_1], {read_connection_1 => 1}, config)
-      connection.random_read_connection.should == read_connection_1
+      expect(connection.random_read_connection).to eq read_connection_1
       connection.use_master_connection do
-        connection.random_read_connection.should == master_connection
+        expect(connection.random_read_connection).to eq master_connection
       end
-      connection.random_read_connection.should == read_connection_1
+      expect(connection.random_read_connection).to eq read_connection_1
     end
 
     it "should use the master connection inside a transaction" do
@@ -154,36 +156,36 @@ describe "SeamlessDatabasePoolAdapter" do
     it "should proxy select methods to a read connection" do
       expect(pool_connection).to receive(:current_read_connection).and_return(read_connection_1)
       expect(read_connection_1).to receive(:select).with('SQL').and_return(:retval)
-      pool_connection.send(:select, 'SQL').should == :retval
+      expect(pool_connection.send(:select, 'SQL')).to eq :retval
     end
 
     it "should proxy execute methods to a read connection" do
       expect(pool_connection).to receive(:current_read_connection).and_return(read_connection_1)
       expect(read_connection_1).to receive(:execute).with('SQL').and_return(:retval)
-      pool_connection.execute('SQL').should == :retval
+      expect(pool_connection.execute('SQL')).to eq :retval
     end
 
     it "should proxy select_rows methods to a read connection" do
       expect(pool_connection).to receive(:current_read_connection).and_return(read_connection_1)
       expect(read_connection_1).to receive(:select_rows).with('SQL').and_return(:retval)
-      pool_connection.select_rows('SQL').should == :retval
+      expect(pool_connection.select_rows('SQL')).to eq :retval
     end
   end
 
   context "master connection methods" do
     it "should proxy insert method to the master connection" do
       expect(master_connection).to receive(:insert).with('SQL').and_return(:retval)
-      pool_connection.insert('SQL').should == :retval
+      expect(pool_connection.insert('SQL')).to eq :retval
     end
 
     it "should proxy update method to the master connection" do
       expect(master_connection).to receive(:update).with('SQL').and_return(:retval)
-      pool_connection.update('SQL').should == :retval
+      expect(pool_connection.update('SQL')).to eq :retval
     end
 
     it "should proxy columns method to the master connection" do
       expect(master_connection).to receive(:columns).with(:table).and_return(:retval)
-      pool_connection.columns(:table).should == :retval
+      expect(pool_connection.columns(:table)).to eq :retval
     end
   end
 
@@ -193,7 +195,7 @@ describe "SeamlessDatabasePoolAdapter" do
         expect(master_connection).to receive(:active?).and_return(true)
         expect(read_connection_1).not_to receive(:active?)
         expect(read_connection_2).not_to receive(:active?)
-        pool_connection.active?.should == true
+        expect(pool_connection.active?).to eq true
       end
 
       it "should fork verify! to master connection only" do
@@ -255,7 +257,7 @@ describe "SeamlessDatabasePoolAdapter" do
       expect(master_connection).to receive(:reset_runtime).and_return(1)
       expect(read_connection_1).to receive(:reset_runtime).and_return(2)
       expect(read_connection_2).to receive(:reset_runtime).and_return(3)
-      pool_connection.reset_runtime.should == 6
+      expect(pool_connection.reset_runtime).to eq 6
     end
   end
 
@@ -264,20 +266,20 @@ describe "SeamlessDatabasePoolAdapter" do
       args = [:arg1, :arg2]
       block = Proc.new{}
       expect(master_connection).to receive(:select_value).with(*args, &block)
-      master_connection.should_not_receive(:active?)
-      master_connection.should_not_receive(:reconnect!)
+      expect(master_connection).not_to receive(:active?)
+      expect(master_connection).not_to receive(:reconnect!)
       pool_connection.send(:proxy_connection_method, master_connection, :select_value, :master, *args, &block)
     end
 
     it "should try to reconnect dead connections when they become available again" do
-      master_connection.stub(:select).and_raise("SQL ERROR")      # Rails 3, 4
-      master_connection.stub(:select_rows).and_raise("SQL ERROR") # Rails 5
+      allow(master_connection).to receive(:select).and_raise("SQL ERROR")      # Rails 3, 4
+      allow(master_connection).to receive(:select_rows).and_raise("SQL ERROR") # Rails 5
       expect(master_connection).to receive(:active?).and_return(false, false, true)
       expect(master_connection).to receive(:reconnect!)
       now = Time.now
-      lambda{pool_connection.select_value("SQL")}.should raise_error("SQL ERROR")
-      Time.stub(:now => now + 31)
-      lambda{pool_connection.select_value("SQL")}.should raise_error("SQL ERROR")
+      expect { pool_connection.select_value("SQL") }.to raise_error("SQL ERROR")
+      allow(Time).to receive(:now).and_return(now + 31)
+      expect { pool_connection.select_value("SQL") }.to raise_error("SQL ERROR")
     end
 
     it "should not try to reconnect live connections" do
@@ -285,17 +287,21 @@ describe "SeamlessDatabasePoolAdapter" do
       block = Proc.new{}
       expect(master_connection).to receive(:select).with(*args, &block).twice.and_raise("SQL ERROR")
       expect(master_connection).to receive(:active?).and_return(true)
-      master_connection.should_not_receive(:reconnect!)
-      lambda{pool_connection.send(:proxy_connection_method, master_connection, :select, :read, *args, &block)}.should raise_error("SQL ERROR")
+      expect(master_connection).not_to receive(:reconnect!)
+      expect do
+        pool_connection.send(:proxy_connection_method, master_connection, :select, :read, *args, &block)
+      end.to raise_error("SQL ERROR")
     end
 
     it "should not try to reconnect a connection during a retry" do
       args = [:arg1, :arg2]
       block = Proc.new{}
       expect(master_connection).to receive(:select).with(*args, &block).and_raise("SQL ERROR")
-      master_connection.should_not_receive(:active?)
-      master_connection.should_not_receive(:reconnect!)
-      lambda{pool_connection.send(:proxy_connection_method, master_connection, :select, :retry, *args, &block)}.should raise_error("SQL ERROR")
+      expect(master_connection).not_to receive(:active?)
+      expect(master_connection).not_to receive(:reconnect!)
+      expect do
+        pool_connection.send(:proxy_connection_method, master_connection, :select, :retry, *args, &block)
+      end.to raise_error("SQL ERROR")
     end
 
     it "should try to execute a read statement again after a connection error" do
@@ -303,23 +309,23 @@ describe "SeamlessDatabasePoolAdapter" do
       expect(pool_connection).to receive(:current_read_connection).and_return(read_connection_1)
       expect(read_connection_1).to receive(:select).with('SQL').and_raise(connection_error)
       expect(read_connection_1).to receive(:active?).and_return(true)
-      pool_connection.should_not_receive(:suppress_read_connection)
-      SeamlessDatabasePool.should_not_receive(:set_persistent_read_connection)
+      expect(pool_connection).not_to receive(:suppress_read_connection)
+      expect(SeamlessDatabasePool).not_to receive(:set_persistent_read_connection)
       expect(read_connection_1).to receive(:select).with('SQL').and_return(:results)
-      pool_connection.send(:select, 'SQL').should == :results
+      expect(pool_connection.send(:select, 'SQL')).to eq :results
     end
 
     it "should not try to execute a read statement again after a connection error if the master connection must be used" do
       expect(master_connection).to receive(:select).with('SQL').and_raise("Fail")
       pool_connection.use_master_connection do
-        lambda{pool_connection.send(:select, 'SQL')}.should raise_error("Fail")
+        expect { pool_connection.send(:select, 'SQL') }.to raise_error("Fail")
       end
     end
 
     it "should not try to execute a read statement again after a non-connection error" do
       expect(pool_connection).to receive(:current_read_connection).and_return(read_connection_1)
       expect(pool_connection).to receive(:proxy_connection_method).with(read_connection_1, :select, :read, 'SQL').and_raise("SQL Error")
-      lambda{pool_connection.send(:select, 'SQL')}.should raise_error("SQL Error")
+      expect { pool_connection.send(:select, 'SQL') }.to raise_error("SQL Error")
     end
 
     it "should use a different connection on a retry if the original connection could not be reconnected" do
@@ -330,19 +336,19 @@ describe "SeamlessDatabasePoolAdapter" do
       expect(SeamlessDatabasePool).to receive(:set_persistent_read_connection).with(pool_connection, nil)
       expect(SeamlessDatabasePool).to receive(:set_persistent_read_connection).with(pool_connection, read_connection_2)
       expect(read_connection_2).to receive(:select).with('SQL').and_return(:results)
-      pool_connection.send(:select, 'SQL').should == :results
+      expect(pool_connection.send(:select, 'SQL')).to eq :results
     end
 
     it "should keep track of read connections that can't be reconnected for a set period" do
       pool_connection.available_read_connections.should include(read_connection_1)
       pool_connection.suppress_read_connection(read_connection_1, 30)
-      pool_connection.available_read_connections.should_not include(read_connection_1)
+      expect(pool_connection.available_read_connections).not_to include(read_connection_1)
     end
 
     it "should return dead connections to the pool after the timeout has expired" do
       pool_connection.available_read_connections.should include(read_connection_1)
       pool_connection.suppress_read_connection(read_connection_1, 0.2)
-      pool_connection.available_read_connections.should_not include(read_connection_1)
+      expect(pool_connection.available_read_connections).not_to include(read_connection_1)
       sleep(0.3)
       pool_connection.available_read_connections.should include(read_connection_1)
     end
@@ -350,11 +356,11 @@ describe "SeamlessDatabasePoolAdapter" do
     it "should not return a connection to the pool until it can be reconnected" do
       pool_connection.available_read_connections.should include(read_connection_1)
       pool_connection.suppress_read_connection(read_connection_1, 0.2)
-      pool_connection.available_read_connections.should_not include(read_connection_1)
+      expect(pool_connection.available_read_connections).not_to include(read_connection_1)
       sleep(0.3)
       expect(read_connection_1).to receive(:reconnect!)
       expect(read_connection_1).to receive(:active?).and_return(false)
-      pool_connection.available_read_connections.should_not include(read_connection_1)
+      expect(pool_connection.available_read_connections).not_to include(read_connection_1)
     end
 
     it "should try all connections again if none of them can be reconnected" do
@@ -364,37 +370,37 @@ describe "SeamlessDatabasePoolAdapter" do
       available.should include(read_connection_1)
       available.should include(read_connection_2)
       available.should include(master_connection)
-      stack.size.should == 1
+      expect(stack.size).to eq 1
 
       pool_connection.suppress_read_connection(read_connection_1, 30)
       available = pool_connection.available_read_connections
-      available.should_not include(read_connection_1)
+      expect(available).not_to include(read_connection_1)
       available.should include(read_connection_2)
       available.should include(master_connection)
-      stack.size.should == 2
+      expect(stack.size).to eq 2
 
       pool_connection.suppress_read_connection(master_connection, 30)
       available = pool_connection.available_read_connections
-      available.should_not include(read_connection_1)
+      expect(available).not_to include(read_connection_1)
       available.should include(read_connection_2)
-      available.should_not include(master_connection)
-      stack.size.should == 3
+      expect(available).not_to include(master_connection)
+      expect(stack.size).to eq 3
 
       pool_connection.suppress_read_connection(read_connection_2, 30)
       available = pool_connection.available_read_connections
       available.should include(read_connection_1)
       available.should include(read_connection_2)
       available.should include(master_connection)
-      stack.size.should == 1
+      expect(stack.size).to eq 1
     end
 
     it "should not try to suppress a read connection that wasn't available in the read pool" do
       stack = pool_connection.instance_variable_get(:@available_read_connections)
-      stack.size.should == 1
+      expect(stack.size).to eq 1
       pool_connection.suppress_read_connection(read_connection_1, 30)
-      stack.size.should == 2
+      expect(stack.size).to eq 2
       pool_connection.suppress_read_connection(read_connection_1, 30)
-      stack.size.should == 2
+      expect(stack.size).to eq 2
     end
   end
 end
