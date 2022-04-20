@@ -5,7 +5,7 @@ active_record_version = [active_record_version] unless active_record_version.is_
 gem 'activerecord', *active_record_version
 
 require 'active_record'
-puts "Testing Against ActiveRecord #{ActiveRecord::VERSION::STRING}" if defined?(ActiveRecord::VERSION)
+puts "Testing Against ActiveRecord #{ActiveRecord::VERSION::STRING} on Ruby #{RUBY_VERSION}" if defined?(ActiveRecord::VERSION)
 
 require File.expand_path(File.join(File.dirname(__FILE__), '..', 'lib', 'seamless_database_pool'))
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_model'))

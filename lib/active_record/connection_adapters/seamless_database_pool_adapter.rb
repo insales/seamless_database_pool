@@ -1,3 +1,5 @@
+require 'ruby2_keywords'
+
 module ActiveRecord
   class Base
     class << self
@@ -109,33 +111,33 @@ module ActiveRecord
 
           klass = Class.new(self)
           master_methods.each do |method_name|
-            klass.class_eval <<-EOS, __FILE__, __LINE__ + 1
-              def #{method_name}(*args, &block)
+            klass.class_eval <<-RUBY, __FILE__, __LINE__ + 1
+              ruby2_keywords def #{method_name}(*args, &block)
                 use_master_connection do
                   return proxy_connection_method(master_connection, :#{method_name}, :master, *args, &block)
                 end
               end
-            EOS
+            RUBY
           end
 
           clear_cache_methods.each do |method_name|
-            klass.class_eval <<-EOS, __FILE__, __LINE__ + 1
-              def #{method_name}(*args, &block)
+            klass.class_eval <<-RUBY, __FILE__, __LINE__ + 1
+              ruby2_keywords def #{method_name}(*args, &block)
                 clear_query_cache if query_cache_enabled
                 use_master_connection do
                   return proxy_connection_method(master_connection, :#{method_name}, :master, *args, &block)
                 end
               end
-            EOS
+            RUBY
           end
 
           read_only_methods.each do |method_name|
-            klass.class_eval <<-EOS, __FILE__, __LINE__ + 1
-              def #{method_name}(*args, &block)
+            klass.class_eval <<-RUBY, __FILE__, __LINE__ + 1
+              ruby2_keywords def #{method_name}(*args, &block)
                 connection = @use_master ? master_connection : current_read_connection
                 proxy_connection_method(connection, :#{method_name}, :read, *args, &block)
               end
-            EOS
+            RUBY
           end
           klass.send :protected, :select
 
@@ -186,9 +188,16 @@ module ActiveRecord
         false
       end
 
-      def transaction(options = {})
-        SeamlessDatabasePool.use_master_connection
-        super
+      if ::ActiveRecord::VERSION::MAJOR <= 5
+        def transaction(*options)
+          SeamlessDatabasePool.use_master_connection
+          super
+        end
+      else
+        def transaction(**options)
+          SeamlessDatabasePool.use_master_connection
+          super
+        end
       end
 
       def visitor=(visitor)
@@ -362,7 +371,7 @@ module ActiveRecord
 
       private
 
-      def proxy_connection_method(connection, method, proxy_type, *args, &block)
+      ruby2_keywords def proxy_connection_method(connection, method, proxy_type, *args, &block)
         begin
           connection.send(method, *args, &block)
         rescue => e

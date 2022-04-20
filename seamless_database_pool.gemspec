@@ -16,6 +16,7 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency("activerecord", [">= 3.2.0"])
   spec.add_runtime_dependency("concurrent-ruby", ["~> 1.0"])
+  spec.add_runtime_dependency("ruby2_keywords", [">= 0.0.5"]) # for ruby 2.6
 
   spec.add_development_dependency(%q<rspec>, [">= 2.0"])
   spec.add_development_dependency(%q<sqlite3>, [">= 0"])
