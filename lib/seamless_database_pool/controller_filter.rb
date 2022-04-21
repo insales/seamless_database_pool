@@ -23,9 +23,8 @@ module SeamlessDatabasePool
 
     module ClassMethods
       def seamless_database_pool_options
-        return @seamless_database_pool_options if @seamless_database_pool_options
-        @seamless_database_pool_options = superclass.seamless_database_pool_options.dup if superclass.respond_to?(:seamless_database_pool_options)
-        @seamless_database_pool_options ||= {}
+        @seamless_database_pool_options ||= superclass.respond_to?(:seamless_database_pool_options) &&
+                                            superclass.seamless_database_pool_options.dup || {}
       end
 
       # Call this method to set up the connection types that will be used for your actions.

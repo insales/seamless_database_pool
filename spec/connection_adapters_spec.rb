@@ -40,46 +40,46 @@ describe "Test connection adapters" do
 
         it "should force the master connection on reload" do
           record = model.first
-          SeamlessDatabasePool.should_not_receive(:current_read_connection)
+          expect(SeamlessDatabasePool).not_to receive(:current_read_connection)
           record.reload
         end
 
         it "should quote table names properly" do
-          connection.quote_table_name("foo").should == master_connection.quote_table_name("foo")
+          expect(connection.quote_table_name("foo")).to eq master_connection.quote_table_name("foo")
         end
 
         it "should quote column names properly" do
-          connection.quote_column_name("foo").should == master_connection.quote_column_name("foo")
+          expect(connection.quote_column_name("foo")).to eq master_connection.quote_column_name("foo")
         end
 
         it "should quote string properly" do
-          connection.quote_string("foo").should == master_connection.quote_string("foo")
+          expect(connection.quote_string("foo")).to eq master_connection.quote_string("foo")
         end
 
         it "should quote booleans properly" do
-          connection.quoted_true.should == master_connection.quoted_true
-          connection.quoted_false.should == master_connection.quoted_false
+          expect(connection.quoted_true).to eq master_connection.quoted_true
+          expect(connection.quoted_false).to eq master_connection.quoted_false
         end
 
         it "should quote dates properly" do
           date = Date.today
           time = Time.now
-          connection.quoted_date(date).should == master_connection.quoted_date(date)
-          connection.quoted_date(time).should == master_connection.quoted_date(time)
+          expect(connection.quoted_date(date)).to eq master_connection.quoted_date(date)
+          expect(connection.quoted_date(time)).to eq master_connection.quoted_date(time)
         end
 
         it "should query for records" do
           record = model.find_by_name("test")
-          record.name.should == "test"
+          expect(record.name).to eq "test"
         end
 
         it "should work with query caching" do
           record_id =  model.first.id
           model.cache do
             found = model.find(record_id)
-            found.value.should == 1
+            expect(found.value).to eq 1
             connection.master_connection.update("UPDATE #{model.table_name} SET value = 0 WHERE id = #{record_id}")
-            model.find(record_id).value.should == 1
+            expect(model.find(record_id).value).to eq 1
           end
         end
 
@@ -89,7 +89,7 @@ describe "Test connection adapters" do
             found = model.find(record_id)
             found.name = "new value"
             found.save!
-            model.find(record_id).name.should == "new value"
+            expect(model.find(record_id).name).to eq "new value"
           end
         end
 
@@ -97,50 +97,50 @@ describe "Test connection adapters" do
           let(:sample_sql){"SELECT #{connection.quote_column_name('name')} FROM #{connection.quote_table_name(model.table_name)}"}
 
           it "should not include the master connection in the read pool for these tests" do
-            connection.available_read_connections.should_not include(master_connection)
-            connection.current_read_connection.should_not == master_connection
+            expect(connection.available_read_connections).not_to include(master_connection)
+            expect(connection.current_read_connection).not_to eq master_connection
           end
 
           it "should send select to the read connection" do
             results = connection.send(:select, sample_sql)
-            results.to_a.should == [{"name" => "test"}]
-            results.to_a.should == master_connection.send(:select, sample_sql).to_a
-            results.should be_read_only
+            expect(results.to_a).to eq [{"name" => "test"}]
+            expect(results.to_a).to eq master_connection.send(:select, sample_sql).to_a
+            expect(results).to be_read_only
           end
 
           it "should send select_rows to the read connection" do
             results = connection.select_rows(sample_sql)
-            results.should == [["test"]]
-            results.should == master_connection.select_rows(sample_sql)
-            results.should be_read_only
+            expect(results).to eq [["test"]]
+            expect(results).to eq master_connection.select_rows(sample_sql)
+            expect(results).to be_read_only
           end
 
           it "should send execute to the read connection" do
             results = connection.execute(sample_sql)
-            results.should be_read_only
+            expect(results).to be_read_only
           end
 
           it "should send columns to the read connection" do
             results = connection.columns(model.table_name)
             columns = results.collect{|c| c.name}.sort.should
-            columns.should == ["id", "name", "value"]
-            columns.should == master_connection.columns(model.table_name).collect{|c| c.name}.sort
-            results.should be_read_only
+            expect(columns).to eq ["id", "name", "value"]
+            expect(columns).to eq master_connection.columns(model.table_name).collect{|c| c.name}.sort
+            expect(results).to be_read_only
           end
 
           it "should send tables to the read connection" do
             results = connection.tables
-            results.should == [model.table_name]
-            results.should == master_connection.tables
-            results.should be_read_only
+            expect(results).to eq [model.table_name]
+            expect(results).to eq master_connection.tables
+            expect(results).to be_read_only
           end
 
           it "should reconnect dead connections in the read pool" do
             read_connection.disconnect!
-            read_connection.should_not be_active
+            expect(read_connection).not_to be_active
             results = connection.select_all(sample_sql)
-            results.should be_read_only
-            read_connection.should be_active
+            expect(results).to be_read_only
+            expect(read_connection).to be_active
           end
         end
 
@@ -149,26 +149,26 @@ describe "Test connection adapters" do
 
           it "should use select_all" do
             results = connection.select_all(sample_sql)
-            results.to_a.should == [{"name" => "test"}].to_a
-            results.to_a.should == master_connection.select_all(sample_sql).to_a
+            expect(results.to_a).to eq [{"name" => "test"}].to_a
+            expect(results.to_a).to eq master_connection.select_all(sample_sql).to_a
           end
 
           it "should use select_one" do
             results = connection.select_one(sample_sql)
-            results.should == {"name" => "test"}
-            results.should == master_connection.select_one(sample_sql)
+            expect(results).to eq({"name" => "test"})
+            expect(results).to eq master_connection.select_one(sample_sql)
           end
 
           it "should use select_values" do
             results = connection.select_values(sample_sql)
-            results.should == ["test"]
-            results.should == master_connection.select_values(sample_sql)
+            expect(results).to eq ["test"]
+            expect(results).to eq master_connection.select_values(sample_sql)
           end
 
           it "should use select_value" do
             results = connection.select_value(sample_sql)
-            results.should == "test"
-            results.should == master_connection.select_value(sample_sql)
+            expect(results).to eq "test"
+            expect(results).to eq master_connection.select_value(sample_sql)
           end
         end
 
@@ -178,33 +178,33 @@ describe "Test connection adapters" do
           let(:delete_sql){ "DELETE FROM #{connection.quote_table_name(model.table_name)}" }
 
           it "should blow up if a master connection method is sent to the read only connection" do
-            lambda{read_connection.update(update_sql)}.should raise_error(NotImplementedError)
-            lambda{read_connection.update(insert_sql)}.should raise_error(NotImplementedError)
-            lambda{read_connection.update(delete_sql)}.should raise_error(NotImplementedError)
-            lambda{read_connection.transaction{}}.should raise_error(NotImplementedError)
-            lambda{read_connection.create_table(:test)}.should raise_error(NotImplementedError)
+            expect { read_connection.update(update_sql)  }.to raise_error(NotImplementedError)
+            expect { read_connection.update(insert_sql)  }.to raise_error(NotImplementedError)
+            expect { read_connection.update(delete_sql)  }.to raise_error(NotImplementedError)
+            expect { read_connection.transaction{}       }.to raise_error(NotImplementedError)
+            expect { read_connection.create_table(:test) }.to raise_error(NotImplementedError)
           end
 
           it "should send update to the master connection" do
             connection.update(update_sql)
-            model.first.value.should == 2
+            expect(model.first.value).to eq 2
           end
 
           it "should send insert to the master connection" do
             connection.update(insert_sql)
-            model.find_by_name("new").should_not == nil
+            expect(model.find_by_name("new")).not_to eq nil
           end
 
           it "should send delete to the master connection" do
             connection.update(delete_sql)
-            model.first.should == nil
+            expect(model.first).to eq nil
           end
 
           it "should send transaction to the master connection" do
             connection.transaction do
               connection.update(update_sql)
             end
-            model.first.value.should == 2
+            expect(model.first.value).to eq 2
           end
 
           it "should send schema altering statements to the master connection" do
@@ -228,7 +228,7 @@ describe "Test connection adapters" do
             without_driver = StringIO.new
             ActiveRecord::SchemaDumper.dump(master_connection, without_driver)
 
-            with_driver.string.should == without_driver.string
+            expect(with_driver.string).to eq without_driver.string
           end
 
           it "should allow for database specific types" do 

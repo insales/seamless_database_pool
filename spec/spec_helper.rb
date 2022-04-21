@@ -5,7 +5,7 @@ active_record_version = [active_record_version] unless active_record_version.is_
 gem 'activerecord', *active_record_version
 
 require 'active_record'
-puts "Testing Against ActiveRecord #{ActiveRecord::VERSION::STRING}" if defined?(ActiveRecord::VERSION)
+puts "Testing Against ActiveRecord #{ActiveRecord::VERSION::STRING} on Ruby #{RUBY_VERSION}" if defined?(ActiveRecord::VERSION)
 
 require File.expand_path(File.join(File.dirname(__FILE__), '..', 'lib', 'seamless_database_pool'))
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_model'))
@@ -23,4 +23,10 @@ RSpec.configure do |config|
   config.order = 'random'
   config.expect_with(:rspec) { |c| c.syntax = [:should, :expect] }
   config.mock_with(:rspec) { |c| c.syntax = [:should, :expect] }
+end
+
+# enable ruby 2.7 warnings
+if defined?(Warning) && Warning.respond_to?(:[]=)
+  $VERBOSE = true
+  Warning[:deprecated] = true
 end

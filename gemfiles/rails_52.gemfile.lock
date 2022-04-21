@@ -4,6 +4,7 @@ PATH
     seamless_database_pool (1.0.20)
       activerecord (>= 3.2.0)
       concurrent-ruby (~> 1.0)
+      ruby2_keywords (>= 0.0.5)
 
 GEM
   remote: https://rubygems.org/
@@ -45,6 +46,7 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.11.0)
     rspec-support (3.11.0)
+    ruby2_keywords (0.0.5)
     sqlite3 (1.4.2)
     thor (1.2.1)
     thread_safe (0.3.6)
