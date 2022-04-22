@@ -22,4 +22,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency(%q<sqlite3>, [">= 0"])
   spec.add_development_dependency(%q<mysql2>, [">= 0"])
   spec.add_development_dependency(%q<pg>, [">= 0"])
+  spec.add_development_dependency("actionpack", [">= 3.2.0"])
 end

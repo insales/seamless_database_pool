@@ -1,7 +1,8 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
-describe "SeamlessDatabasePool::ControllerFilter" do
-
+RSpec.describe SeamlessDatabasePool::ControllerFilter do
   module SeamlessDatabasePool
     class TestApplicationController
       attr_reader :session

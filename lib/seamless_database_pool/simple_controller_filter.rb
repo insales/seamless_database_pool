@@ -15,7 +15,7 @@ module SeamlessDatabasePool
   module SimpleControllerFilter
     extend ActiveSupport::Concern
 
-    module ClassMethods
+    class_methods do
       # Call this method to set up the connection types that will be used for your
       # actions. Pass connection type in the first argument (:master, :persistent, or
       # :random). It will define method for around filter and apply it
@@ -35,7 +35,7 @@ module SeamlessDatabasePool
         if pool
           skip_around_action :"use_#{pool}_database_pool", options
         else
-          READ_CONNECTION_METHODS.each { |pool| skip_use_database_pool(pool, options) }
+          READ_CONNECTION_METHODS.each { |pool| skip_use_database_pool(pool, **options) }
         end
       end
     end
