@@ -150,7 +150,7 @@ module SeamlessDatabasePool
       database_configs.transform_values do |values|
         if values['adapter'] == 'seamless_database_pool'
           next values.except('pool_adapter', 'pool_weight', 'master', 'read_pool').merge(
-            values['master'].is_a?(Hash) && values['master'] || {},
+            values['master'].is_a?(Hash) && values['master'].except('pool_weight') || {},
             { 'adapter' => values['pool_adapter'] }
           )
         end
