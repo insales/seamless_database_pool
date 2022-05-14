@@ -141,18 +141,21 @@ module SeamlessDatabasePool
     # Pull out the master configuration for compatibility with such things as the Rails' rake db:*
     # tasks which only support known adapters.
     def master_database_configuration(database_configs)
-      configs = {}
-      database_configs.each do |key, values|
-        if values['adapter'] == 'seamless_database_pool'
-          values['adapter'] = values.delete('pool_adapter')
-          values = values.merge(values['master']) if values['master'].is_a?(Hash)
-          values.delete('pool_weight')
-          values.delete('master')
-          values.delete('read_pool')
-        end
-        configs[key] = values
+      if database_configs.respond_to?(:configs_for)
+        # in rails 6+ it is not a hash
+        # this is not compatible with rails native multiple databases
+        database_configs = database_configs.configs_for.to_h{|conf| [conf.env_name, conf.config]}
       end
-      configs
+
+      database_configs.transform_values do |values|
+        if values['adapter'] == 'seamless_database_pool'
+          next values.except('pool_adapter', 'pool_weight', 'master', 'read_pool').merge(
+            values['master'].is_a?(Hash) && values['master'] || {},
+            { 'adapter' => values['pool_adapter'] }
+          )
+        end
+        values
+      end
     end
   end
 end

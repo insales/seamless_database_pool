@@ -17,11 +17,11 @@ module SeamlessDatabasePool
               if Rails::VERSION::MAJOR >= 6
                 # Rails 6 (and above) compatible behaviour
                 ActiveRecord::DatabaseConfigurations.new(
-                  SeamlessDatabasePool.master_database_configuration(super.deep_dup)
+                  SeamlessDatabasePool.master_database_configuration(super)
                 )
               else
                 # Before Rails 6 compatible behaviour
-                SeamlessDatabasePool.master_database_configuration(super.deep_dup)
+                SeamlessDatabasePool.master_database_configuration(super)
               end
             end
           end
