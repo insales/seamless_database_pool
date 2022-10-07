@@ -13,5 +13,5 @@ appraise 'rails_61' do
 end
 
 appraise 'rails_70' do
-  gem 'activerecord', '~>7.0.0'
+  gem 'activerecord', '~>7.0.4'
 end
