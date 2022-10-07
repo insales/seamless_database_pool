@@ -151,6 +151,10 @@ describe "SeamlessDatabasePool" do
         'database' => 'test'
       }
     }
+    if defined?(ActiveRecord::DatabaseConfigurations)
+      # rails 6+
+      config = ActiveRecord::DatabaseConfigurations.new(config)
+    end
     expect(SeamlessDatabasePool.master_database_configuration(config)).to eq({
       'development' => {
         'adapter' => 'mysql2',

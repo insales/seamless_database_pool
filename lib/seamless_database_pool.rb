@@ -144,7 +144,12 @@ module SeamlessDatabasePool
       if database_configs.respond_to?(:configs_for)
         # in rails 6+ it is not a hash
         # this is not compatible with rails native multiple databases
-        database_configs = database_configs.configs_for.to_h{|conf| [conf.env_name, conf.config]}
+        database_configs = database_configs.configs_for.to_h do |conf|
+          [
+            conf.env_name,
+            conf.respond_to?(:configuration_hash) && conf.configuration_hash.stringify_keys || conf.config
+          ]
+        end
       end
 
       database_configs.transform_values do |values|
