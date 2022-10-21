@@ -58,9 +58,9 @@ describe "SeamlessDatabasePoolAdapter ActiveRecord::Base extension" do
     logger = ActiveRecord::Base.logger
     weights = {master_connection => 1, read_connection_1 => 1, read_connection_2 => 2}
 
-    expect(ActiveRecord::Base).to receive(:writer_connection).with('adapter' => 'writer', 'host' => 'master_host', 'username' => 'user', 'pool_weight' => 1).and_return(master_connection)
-    expect(ActiveRecord::Base).to receive(:reader_connection).with('adapter' => 'reader', 'host' => 'read_host_1', 'username' => 'user', 'pool_weight' => 1).and_return(read_connection_1)
-    expect(ActiveRecord::Base).to receive(:reader_connection).with('adapter' => 'reader', 'host' => 'read_host_2', 'username' => 'user', 'pool_weight' => 2).and_return(read_connection_2)
+    expect(ActiveRecord::Base).to receive(:writer_connection).with({'adapter' => 'writer', 'host' => 'master_host', 'username' => 'user', 'pool_weight' => 1}).and_return(master_connection)
+    expect(ActiveRecord::Base).to receive(:reader_connection).with({'adapter' => 'reader', 'host' => 'read_host_1', 'username' => 'user', 'pool_weight' => 1}).and_return(read_connection_1)
+    expect(ActiveRecord::Base).to receive(:reader_connection).with({'adapter' => 'reader', 'host' => 'read_host_2', 'username' => 'user', 'pool_weight' => 2}).and_return(read_connection_2)
 
     klass = double(:class)
     expect(ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter).to receive(:adapter_class).with(master_connection).and_return(klass)
@@ -69,7 +69,8 @@ describe "SeamlessDatabasePoolAdapter ActiveRecord::Base extension" do
     expect(ActiveRecord::Base).to receive(:establish_adapter).with('writer')
     expect(ActiveRecord::Base).to receive(:establish_adapter).with('reader').twice
 
-    expect(ActiveRecord::Base.seamless_database_pool_connection(options)).to eq pool_connection
+    conn = ActiveRecord::Base.seamless_database_pool_connection(options)
+    expect(conn).to eq pool_connection
   end
 
   it "should raise an error if the adapter would be recursive" do
