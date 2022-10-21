@@ -7,13 +7,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - ruby-version: 2.6.6
-            rails-version: 60
           - ruby-version: 2.7.5
             rails-version: 60
           - ruby-version: 2.7.5
             rails-version: 61
           - ruby-version: 2.7.5
+            rails-version: 70
+          - ruby-version: 3.0.4
             rails-version: 70
 
     env:
