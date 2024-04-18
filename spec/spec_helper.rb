@@ -1,5 +1,12 @@
 require 'rubygems'
 
+if ENV['COVERAGE']
+  require 'simplecov'
+  SimpleCov.start do
+    add_filter 'spec'
+  end
+end
+
 require 'active_record'
 puts "Testing Against ActiveRecord #{ActiveRecord::VERSION::STRING} on Ruby #{RUBY_VERSION}" if defined?(ActiveRecord::VERSION)
 

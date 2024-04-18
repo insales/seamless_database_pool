@@ -12,6 +12,9 @@ module ActiveRecord
         default_config.delete(:pool_adapter)
 
         master_config = default_config.merge(config[:master]).with_indifferent_access
+        if (url = master_config.delete(:url))
+          master_config.merge!(ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.new(url).to_hash)
+        end
         establish_adapter(master_config[:adapter])
         master_connection = send("#{master_config[:adapter]}_connection".to_sym, master_config)
         pool_weights[master_connection] = master_config[:pool_weight].to_i if master_config[:pool_weight].to_i > 0
@@ -21,6 +24,9 @@ module ActiveRecord
         read_connections = []
         config[:read_pool].each_with_index do |read_config, i|
           read_config = default_config.merge(read_config).with_indifferent_access
+          if (url = read_config.delete(:url))
+            master_config.merge!(ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.new(url).to_hash)
+          end
           read_config[:pool_weight] = read_config[:pool_weight].to_i
           if read_config[:pool_weight] > 0
             begin
@@ -146,6 +152,7 @@ module ActiveRecord
         end
 
         # Set the arel visitor on the connections.
+        # unused in modern rails (was used in around rails 3)? looks being replaced by `connection.arel_visitor`
         def visitor_for(pool)
           # This is ugly, but then again, so is the code in ActiveRecord for setting the arel
           # visitor. There is a note in the code indicating the method signatures should be updated.

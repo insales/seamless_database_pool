@@ -191,7 +191,12 @@ describe "SeamlessDatabasePool" do
             shard_replica:
               pool_adapter: mysql2
               database: dev_db_shard
-              replica: true            
+              replica: true
+            with_url:
+              adapter: seamless_database_pool
+              pool_adapter: mysql2
+              master:
+                url: mysql2://localhost:1234
           test:
             adapter: mysql2
             database: test_db
@@ -200,7 +205,7 @@ describe "SeamlessDatabasePool" do
 
       it "should pull out the master configurations for compatibility with rake db:* tasks" do
         expect(master_database_configuration).to be_a(ActiveRecord::DatabaseConfigurations)
-        expect(master_database_configuration.configurations.size).to eq(3) # except replica
+        expect(master_database_configuration.configurations.size).to eq(4) # except replica
 
         expect(master_database_configuration.configs_for(env_name: 'development').map(&:configuration_hash)).to eq([
           {
@@ -215,6 +220,11 @@ describe "SeamlessDatabasePool" do
             migrations_paths: 'db/migrate_shards',
             database_tasks: true,
             schema_dump: false
+          },
+          {
+            adapter: 'mysql2',
+            host: 'localhost',
+            port: 1234
           }
         ])
         expect(master_database_configuration.configs_for(env_name: 'test').map(&:configuration_hash)).to eq([{

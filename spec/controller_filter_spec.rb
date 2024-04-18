@@ -86,7 +86,9 @@ end
 RSpec.describe SeamlessDatabasePool::ControllerFilter do
 
   let(:session){Hash.new}
-  let(:controller){SeamlessDatabasePool::TestOtherController.new(session)}
+  let(:base_controller_class) { SeamlessDatabasePool::TestBaseController }
+  let(:controller_class) { SeamlessDatabasePool::TestOtherController }
+  let(:controller) { controller_class.new(session) }
 
   it "should work with nothing set" do
     controller = SeamlessDatabasePool::TestApplicationController.new(session)
@@ -96,6 +98,7 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
   it "should allow setting a connection type for a single action" do
     controller = SeamlessDatabasePool::TestBaseController.new(session)
     expect(controller.process('read')).to eq :persistent
+    expect(controller.process('other')).to eq :master
   end
 
   it "should allow setting a connection type for actions" do
@@ -121,6 +124,19 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
 
     # Third request
     expect(controller.process('read')).to eq :persistent
+  end
+
+  context "when set unknown method" do
+    let(:controller_class) do
+      Class.new(base_controller_class) do
+        use_database_pool({ base_action: :lala_foo })
+      end
+    end
+
+    it "raises" do
+      # expect(controller.send(:process_action, 'base_action')).to eq :persistent
+      expect { controller.send(:process_action, 'base_action') }.to raise_error(/Invalid read pool method/)
+    end
   end
 
   it "should not break trying to force the master connection if sessions are not enabled" do

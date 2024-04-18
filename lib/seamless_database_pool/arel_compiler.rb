@@ -1,3 +1,4 @@
+# is it used?
 module Arel
   module SqlCompiler
     # Hook into arel to use the compiler used by the master connection.
