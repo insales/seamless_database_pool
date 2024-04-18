@@ -15,7 +15,7 @@ begin
   namespace :test do
     desc 'Run all tests including for all database adapters'
     task :all do
-      save_val = ENV['TEST_ADAPTERS']
+      save_val = ENV.fetch('TEST_ADAPTERS', nil)
       begin
         ENV['TEST_ADAPTERS'] = YAML.load_file(File.expand_path('spec/database.yml', __dir__)).keys.join(' ')
         Rake::Task['test'].execute
@@ -26,7 +26,7 @@ begin
 
     desc 'Test all database adapters defined in database.yml or just the one specified in TEST_ADAPTERS'
     task :adapters do
-      save_val = ENV['TEST_ADAPTERS']
+      save_val = ENV.fetch('TEST_ADAPTERS', nil)
       begin
         ENV['TEST_ADAPTERS'] ||= YAML.load_file(File.expand_path('spec/database.yml', __dir__)).keys.join(' ')
         Rake::Task['test:adapters:specified'].execute
@@ -44,7 +44,7 @@ begin
       YAML.load_file(File.expand_path('spec/database.yml', __dir__)).keys.each do |adapter_name|
         desc "Test the #{adapter_name} database adapter"
         task adapter_name do
-          save_val = ENV['TEST_ADAPTERS']
+          save_val = ENV.fetch('TEST_ADAPTERS', nil)
           begin
             ENV['TEST_ADAPTERS'] = adapter_name
             Rake::Task['test:adapters:specified'].execute

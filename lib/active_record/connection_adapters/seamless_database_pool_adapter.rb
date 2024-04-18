@@ -15,7 +15,7 @@ module ActiveRecord
           master_config.merge!(ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.new(url).to_hash)
         end
         establish_adapter(master_config[:adapter])
-        master_connection = send("#{master_config[:adapter]}_connection".to_sym, master_config)
+        master_connection = send(:"#{master_config[:adapter]}_connection", master_config)
         pool_weights[master_connection] = master_config[:pool_weight].to_i if master_config[:pool_weight].to_i > 0
 
         SeamlessDatabasePool.connection_names[master_connection.object_id] = 'master'
@@ -31,7 +31,7 @@ module ActiveRecord
 
           begin
             establish_adapter(read_config[:adapter])
-            conn = send("#{read_config[:adapter]}_connection".to_sym, read_config)
+            conn = send(:"#{read_config[:adapter]}_connection", read_config)
             read_connections << conn
             pool_weights[conn] = read_config[:pool_weight]
             SeamlessDatabasePool.connection_names[conn.object_id] = "slave_#{i}"
@@ -367,8 +367,8 @@ module ActiveRecord
 
       private
 
-      ruby2_keywords def proxy_connection_method(connection, method, proxy_type, *args, &block)
-        connection.send(method, *args, &block)
+      ruby2_keywords def proxy_connection_method(connection, method, proxy_type, ...)
+        connection.send(method, ...)
       rescue StandardError => e
         # If the statement was a read statement and it wasn't forced against the master connection
         # try to reconnect if the connection is dead and then re-run the statement.
@@ -380,7 +380,7 @@ module ActiveRecord
           connection = current_read_connection
           SeamlessDatabasePool.set_persistent_read_connection(self, connection)
         end
-        proxy_connection_method(connection, method, :retry, *args, &block)
+        proxy_connection_method(connection, method, :retry, ...)
       end
 
       # Yield a block to each connection in the pool. If the connection is dead, ignore the error

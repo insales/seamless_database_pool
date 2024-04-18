@@ -146,11 +146,11 @@ module SeamlessDatabasePool
 
         new_conf = conf.configuration_hash.symbolize_keys
         new_conf = new_conf.except(*%i[pool_adapter pool_weight master read_pool]).merge(
-          new_conf[:master].is_a?(Hash) && new_conf[:master].symbolize_keys.except(:pool_weight) || {},
+          (new_conf[:master].is_a?(Hash) && new_conf[:master].symbolize_keys.except(:pool_weight)) || {},
           { adapter: new_conf[:pool_adapter] }
         )
 
-        if conf.respond_to?(:url) && (url = conf.url) || url = new_conf.delete(:url)
+        if (conf.respond_to?(:url) && (url = conf.url)) || url = new_conf.delete(:url)
           ActiveRecord::DatabaseConfigurations::UrlConfig.new(conf.env_name, conf.name, url, new_conf)
         else
           ActiveRecord::DatabaseConfigurations::HashConfig.new(conf.env_name, conf.name, new_conf)

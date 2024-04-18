@@ -11,7 +11,7 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
       include AbstractController::Callbacks
       include ActionController::Redirecting
 
-      include ::SeamlessDatabasePool::SimpleControllerFilter
+      include SeamlessDatabasePool::SimpleControllerFilter
 
       attr_reader :session
 
@@ -24,7 +24,7 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
       end
 
       def base_action
-        ::SeamlessDatabasePool.read_only_connection_type
+        SeamlessDatabasePool.read_only_connection_type
       end
     end
   end
