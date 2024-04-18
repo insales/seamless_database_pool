@@ -4,9 +4,13 @@ source 'https://rubygems.org'
 gemspec
 
 gem 'rake'
+gem 'simplecov', require: false
+gem 'railties'
 
 unless defined?(Appraisal)
   gem 'appraisal', require: false
+  gem 'sqlite3', '~>1.4'
+  gem 'pry-byebug'
 
   group :lint do
     gem 'rubocop'
