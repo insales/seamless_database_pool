@@ -21,27 +21,27 @@ module ActiveRecord
         SeamlessDatabasePool.connection_names[master_connection.object_id] = 'master'
 
         read_connections = []
-        config[:read_pool].each_with_index do |read_config, i|
+        config[:read_pool]&.each_with_index do |read_config, i|
           read_config = default_config.merge(read_config).with_indifferent_access
           if (url = read_config.delete(:url))
             master_config.merge!(ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.new(url).to_hash)
           end
           read_config[:pool_weight] = read_config[:pool_weight].to_i
-          if read_config[:pool_weight] > 0
-            begin
-              establish_adapter(read_config[:adapter])
-              conn = send("#{read_config[:adapter]}_connection".to_sym, read_config)
-              read_connections << conn
-              pool_weights[conn] = read_config[:pool_weight]
-              SeamlessDatabasePool.connection_names[conn.object_id] = "slave_#{i}"
-            rescue StandardError => e
-              if logger
-                logger.error("Error connecting to read connection #{read_config.inspect}")
-                logger.error(e)
-              end
+          next unless read_config[:pool_weight] > 0
+
+          begin
+            establish_adapter(read_config[:adapter])
+            conn = send("#{read_config[:adapter]}_connection".to_sym, read_config)
+            read_connections << conn
+            pool_weights[conn] = read_config[:pool_weight]
+            SeamlessDatabasePool.connection_names[conn.object_id] = "slave_#{i}"
+          rescue StandardError => e
+            if logger
+              logger.error("Error connecting to read connection #{read_config.inspect}")
+              logger.error(e)
             end
           end
-        end if config[:read_pool]
+        end
 
         klass = ::ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter.adapter_class(master_connection)
         klass.new(nil, logger, master_connection, read_connections, pool_weights, config)
@@ -309,29 +309,27 @@ module ActiveRecord
       # listening.
       def available_read_connections
         available = @available_read_connections.last
-        if available.expired?
-          begin
-            @logger.info("Adding dead database connection back to the pool") if @logger
-            available.reconnect!
-          rescue => e
-            # Couldn't reconnect so try again in a little bit
-            if @logger
-              @logger.warn("Failed to reconnect to database when adding connection back to the pool")
-              @logger.warn(e)
-            end
-            available.expires = 30.seconds.from_now
-            return available.connections
+        return available.connections unless available.expired?
+
+        begin
+          @logger.info('Adding dead database connection back to the pool') if @logger
+          available.reconnect!
+        rescue StandardError => e
+          # Couldn't reconnect so try again in a little bit
+          if @logger
+            @logger.warn('Failed to reconnect to database when adding connection back to the pool')
+            @logger.warn(e)
           end
-
-          # If reconnect is successful, the connection will have been re-added to @available_read_connections list,
-          # so let's pop this old version of the connection
-          @available_read_connections.pop
-
-          # Now we'll try again after either expiring our bad connection or re-adding our good one
-          return available_read_connections
-        else
+          available.expires = 30.seconds.from_now
           return available.connections
         end
+
+        # If reconnect is successful, the connection will have been re-added to @available_read_connections list,
+        # so let's pop this old version of the connection
+        @available_read_connections.pop
+
+        # Now we'll try again after either expiring our bad connection or re-adding our good one
+        available_read_connections
       end
 
       def reset_available_read_connections
