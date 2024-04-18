@@ -11,9 +11,10 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
       include AbstractController::Callbacks
       include ActionController::Redirecting
 
-      include ::SeamlessDatabasePool::SimpleControllerFilter
+      include SeamlessDatabasePool::SimpleControllerFilter
 
       attr_reader :session
+
       def initialize(session)
         super()
         @session = session
@@ -23,22 +24,22 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
       end
 
       def base_action
-        ::SeamlessDatabasePool.read_only_connection_type
+        SeamlessDatabasePool.read_only_connection_type
       end
     end
   end
-  let(:session) { Hash.new }
+  let(:session) { {} }
   let(:controller) { controller_class.new(session) }
 
-  context "when nothing set" do
+  context 'when nothing set' do
     let(:controller_class) { Class.new(base_controller_class) }
 
-    it "uses master" do
+    it 'uses master' do
       expect(controller.send(:process_action, 'base_action')).to eq :master
     end
   end
 
-  context "when set" do
+  context 'when set' do
     let(:controller_class) do
       Class.new(base_controller_class) do
         use_database_pool :persistent
@@ -50,22 +51,22 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
       end
     end
 
-    it "uses that pool" do
+    it 'uses that pool' do
       expect(controller.send(:process_action, 'base_action')).to eq :persistent
     end
 
-    it "uses master when set in session" do
+    it 'uses master when set in session' do
       controller.send(:use_master_db_connection_on_next_request)
       expect(controller.send(:process_action, 'base_action')).to eq :master
     end
 
-    it "persists in session on redirect" do
+    it 'persists in session on redirect' do
       controller.send(:process_action, 'action_with_redirect')
       expect(controller.send(:process_action, 'base_action')).to eq :master
     end
   end
 
-  context "when set in parent and skipped in self" do
+  context 'when set in parent and skipped in self' do
     let(:controller_parent_class) do
       Class.new(base_controller_class) do
         use_database_pool :persistent
@@ -77,7 +78,7 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
       end
     end
 
-    it "uses master" do
+    it 'uses master' do
       expect(controller.send(:process_action, 'base_action')).to eq :master
     end
   end

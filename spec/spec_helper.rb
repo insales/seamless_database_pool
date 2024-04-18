@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rubygems'
 
 if ENV['COVERAGE']
@@ -8,12 +10,14 @@ if ENV['COVERAGE']
 end
 
 require 'active_record'
-puts "Testing Against ActiveRecord #{ActiveRecord::VERSION::STRING} on Ruby #{RUBY_VERSION}" if defined?(ActiveRecord::VERSION)
+if defined?(ActiveRecord::VERSION)
+  puts "Testing Against ActiveRecord #{ActiveRecord::VERSION::STRING} on Ruby #{RUBY_VERSION}"
+end
 
 require File.expand_path(File.join(File.dirname(__FILE__), '..', 'lib', 'seamless_database_pool'))
 require File.expand_path(File.join(File.dirname(__FILE__), 'test_model'))
 
-$LOAD_PATH << File.expand_path("../test_adapter", __FILE__)
+$LOAD_PATH << File.expand_path('test_adapter', __dir__)
 
 RSpec.configure do |config|
   config.run_all_when_everything_filtered = true
@@ -24,8 +28,8 @@ RSpec.configure do |config|
   # the seed, which is printed after each run.
   #     --seed 1234
   config.order = 'random'
-  config.expect_with(:rspec) { |c| c.syntax = [:should, :expect] }
-  config.mock_with(:rspec) { |c| c.syntax = [:should, :expect] }
+  config.expect_with(:rspec) { |c| c.syntax = %i[should expect] }
+  config.mock_with(:rspec) { |c| c.syntax = %i[should expect] }
 end
 
 # enable ruby 2.7 warnings

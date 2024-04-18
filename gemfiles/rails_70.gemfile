@@ -2,10 +2,14 @@
 
 source "https://rubygems.org"
 
+gem "railties"
 gem "rake"
 gem "simplecov", require: false
-gem "railties"
-gem "activerecord", "~>7.0.4"
+gem "actionpack"
+gem "mysql2"
+gem "pg"
+gem "rspec", [">= 2.0"]
 gem "sqlite3", "~>1.4"
+gem "activerecord", "~>7.0.4"
 
 gemspec path: "../"
