@@ -130,42 +130,98 @@ describe "SeamlessDatabasePool" do
     expect(SeamlessDatabasePool.read_only_connection_type(nil)).to eq nil
   end
 
-  it "should pull out the master configurations for compatibility with rake db:* tasks" do
-    config = {
-      'development' => {
-        'adapter' => 'seamless_database_pool',
-        'pool_adapter' => 'mysql2',
-        'database' => 'development',
-        'username' => 'root',
-        'master' => {
-          'host' => 'localhost',
-          'pool_weight' => 2
-        },
-        'read_pool' => {
-          'host' => 'slavehost',
-          'pool_weight' => 5
-        }
-      },
-      'test' => {
-        'adapter' => 'mysql2',
-        'database' => 'test'
-      }
-    }
-    if defined?(ActiveRecord::DatabaseConfigurations)
-      # rails 6+
-      config = ActiveRecord::DatabaseConfigurations.new(config)
+  describe "master_database_configuration" do
+    subject(:master_database_configuration) { SeamlessDatabasePool.master_database_configuration(database_config) }
+    let(:raw_db_config) do
+      YAML.safe_load(<<~YAML)
+        development:
+          adapter: seamless_database_pool
+          pool_adapter: mysql2
+          database: dev_db
+          username: root
+          master:
+            host: localhost
+            pool_weight: 2
+          read_pool:
+            host: slavehost
+            pool_weight: 5
+        test:
+          adapter: mysql2
+          database: test_db
+      YAML
     end
-    expect(SeamlessDatabasePool.master_database_configuration(config)).to eq({
-      'development' => {
-        'adapter' => 'mysql2',
-        'database' => 'development',
-        'username' => 'root',
-        'host' => 'localhost'
-      },
-      'test' => {
-        'adapter' => 'mysql2',
-        'database' => 'test'
-      }
-    })
+    let(:database_config) { ActiveRecord::DatabaseConfigurations.new(raw_db_config) }
+
+    it "should pull out the master configurations for compatibility with rake db:* tasks" do
+      expect(master_database_configuration).to be_a(ActiveRecord::DatabaseConfigurations)
+      expect(master_database_configuration.configurations.size).to eq(2)
+      expect(master_database_configuration.configs_for(env_name: 'development').map(&:configuration_hash)).to eq([{
+        adapter: 'mysql2',
+        database: 'dev_db',
+        username: 'root',
+        host: 'localhost'
+      }])
+      expect(master_database_configuration.configs_for(env_name: 'test').map(&:configuration_hash)).to eq([{
+        adapter: 'mysql2',
+        database: 'test_db'
+      }])
+    end
+
+    context "when multiple primary db" do
+      let(:raw_db_config) do
+        YAML.safe_load(<<~YAML)
+          development:
+            primary:
+              adapter: seamless_database_pool
+              pool_adapter: mysql2
+              database: dev_db
+              username: root
+              master:
+                host: localhost
+                pool_weight: 2
+              read_pool:
+                host: slavehost
+                pool_weight: 5
+            shard:
+              pool_adapter: mysql2
+              database: dev_db_shard
+              migrations_paths: 'db/migrate_shards'
+              database_tasks: true
+              schema_dump: false
+            shard_replica:
+              pool_adapter: mysql2
+              database: dev_db_shard
+              replica: true            
+          test:
+            adapter: mysql2
+            database: test_db
+        YAML
+      end
+
+      it "should pull out the master configurations for compatibility with rake db:* tasks" do
+        expect(master_database_configuration).to be_a(ActiveRecord::DatabaseConfigurations)
+        expect(master_database_configuration.configurations.size).to eq(3) # except replica
+
+        expect(master_database_configuration.configs_for(env_name: 'development').map(&:configuration_hash)).to eq([
+          {
+            adapter: 'mysql2',
+            database: 'dev_db',
+            username: 'root',
+            host: 'localhost'
+          },
+          {
+            pool_adapter: 'mysql2',
+            database: 'dev_db_shard',
+            migrations_paths: 'db/migrate_shards',
+            database_tasks: true,
+            schema_dump: false
+          }
+        ])
+        expect(master_database_configuration.configs_for(env_name: 'test').map(&:configuration_hash)).to eq([{
+          adapter: 'mysql2',
+          database: 'test_db'
+        }])
+      end
+    end
   end
 end

@@ -13,11 +13,7 @@ describe "Test connection adapters" do
         let(:master_connection){ connection.master_connection }
 
         before(:all) do
-          if ActiveRecord::VERSION::MAJOR < 4 || (ActiveRecord::VERSION::MAJOR == 4 && ActiveRecord::VERSION::MINOR == 0)
-            ActiveRecord::Base.configurations = {'adapter' => "sqlite3", 'database' => ":memory:"}
-          else
-            ActiveRecord::Base.configurations = {"test" => {'adapter' => "sqlite3", 'database' => ":memory:"}}
-          end
+          ActiveRecord::Base.configurations = {"test" => {'adapter' => "sqlite3", 'database' => ":memory:"}}
           ActiveRecord::Base.establish_connection('adapter' => "sqlite3", 'database' => ":memory:")
           ActiveRecord::Base.connection
           SeamlessDatabasePool::TestModel.db_model(adapter).create_tables

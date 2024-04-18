@@ -3,6 +3,7 @@ require 'spec_helper'
 module SeamlessDatabasePool
   class MockConnection < ActiveRecord::ConnectionAdapters::AbstractAdapter
     def initialize(name)
+      super
       @name = name
     end
 

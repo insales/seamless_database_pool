@@ -1,31 +1,31 @@
 require 'spec_helper'
 
-describe SeamlessDatabasePool::ConnectionStatistics do
-  module SeamlessDatabasePool
-    class ConnectionStatisticsTester
-      def insert(sql, name = nil)
-        "INSERT #{sql}/#{name}"
-      end
-
-      def update(sql, name = nil)
-        execute(sql)
-        "UPDATE #{sql}/#{name}"
-      end
-
-      def execute(sql, name = nil)
-        "EXECUTE #{sql}/#{name}"
-      end
-
-      protected
-
-      def select(sql, name = nil, binds = [])
-        "SELECT #{sql}/#{name}"
-      end
-
-      prepend ::SeamlessDatabasePool::ConnectionStatistics
+module SeamlessDatabasePool
+  class ConnectionStatisticsTester
+    def insert(sql, name = nil)
+      "INSERT #{sql}/#{name}"
     end
-  end
 
+    def update(sql, name = nil)
+      execute(sql)
+      "UPDATE #{sql}/#{name}"
+    end
+
+    def execute(sql, name = nil)
+      "EXECUTE #{sql}/#{name}"
+    end
+
+    protected
+
+    def select(sql, name = nil, _binds = [])
+      "SELECT #{sql}/#{name}"
+    end
+
+    prepend ::SeamlessDatabasePool::ConnectionStatistics
+  end
+end
+
+describe SeamlessDatabasePool::ConnectionStatistics do
   it "should increment statistics on update" do
     connection = SeamlessDatabasePool::ConnectionStatisticsTester.new
     expect(connection.update('SQL', 'name')).to eq "UPDATE SQL/name"

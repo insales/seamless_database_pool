@@ -1,17 +1,11 @@
 # frozen_string_literal: true
 
-appraise 'rails_52' do
-  gem 'activerecord', '~> 5.2.6'
-end
-
-appraise 'rails_60' do
-  gem 'activerecord', '~> 6.0.4'
-end
-
 appraise 'rails_61' do
   gem 'activerecord', '~>6.1.5'
+  gem 'sqlite3', '~>1.4' # activerecord requirement
 end
 
 appraise 'rails_70' do
   gem 'activerecord', '~>7.0.4'
+  gem 'sqlite3', '~>1.4' # activerecord requirement
 end

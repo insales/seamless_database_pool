@@ -3,6 +3,7 @@
 require 'spec_helper'
 require 'action_controller'
 require 'active_support/core_ext/string/output_safety'
+require 'ostruct'
 
 RSpec.describe SeamlessDatabasePool::ControllerFilter do
   let(:base_controller_class) do
@@ -14,6 +15,7 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
 
       attr_reader :session
       def initialize(session)
+        super()
         @session = session
         @_response = OpenStruct.new
         @_request = OpenStruct.new

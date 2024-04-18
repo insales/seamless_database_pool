@@ -4,4 +4,11 @@ source 'https://rubygems.org'
 gemspec
 
 gem 'rake'
-gem 'appraisal', require: false
+
+unless defined?(Appraisal)
+  gem 'appraisal', require: false
+
+  group :lint do
+    gem 'rubocop'
+  end
+end
