@@ -26,7 +26,7 @@ module SeamlessDatabasePool
   class TestBaseController < TestApplicationController
     include ::SeamlessDatabasePool::ControllerFilter
 
-    use_database_pool :read => :persistent
+    use_database_pool read: :persistent
 
     def read
       ::SeamlessDatabasePool.read_only_connection_type
@@ -38,7 +38,7 @@ module SeamlessDatabasePool
   end
 
   class TestOtherController < TestBaseController
-    use_database_pool :all => :random, [:edit, :save, :redirect_master_action] => :master
+    use_database_pool :all => :random, %i[edit save redirect_master_action] => :master
 
     def edit
       ::SeamlessDatabasePool.read_only_connection_type
@@ -49,11 +49,11 @@ module SeamlessDatabasePool
     end
 
     def redirect_master_action
-      redirect_to(:action => :read)
+      redirect_to(action: :read)
     end
 
     def redirect_read_action
-      redirect_to(:action => :read)
+      redirect_to(action: :read)
     end
   end
 
@@ -75,7 +75,7 @@ module SeamlessDatabasePool
   class TestRails2BaseController < TestRails2ApplicationController
     include ::SeamlessDatabasePool::ControllerFilter
 
-    use_database_pool :read => :persistent
+    use_database_pool read: :persistent
 
     def read
       ::SeamlessDatabasePool.read_only_connection_type
@@ -84,29 +84,28 @@ module SeamlessDatabasePool
 end
 
 RSpec.describe SeamlessDatabasePool::ControllerFilter do
-
-  let(:session){Hash.new}
+  let(:session) { {} }
   let(:base_controller_class) { SeamlessDatabasePool::TestBaseController }
   let(:controller_class) { SeamlessDatabasePool::TestOtherController }
   let(:controller) { controller_class.new(session) }
 
-  it "should work with nothing set" do
+  it 'should work with nothing set' do
     controller = SeamlessDatabasePool::TestApplicationController.new(session)
     expect(controller.process('base_action')).to eq :master
   end
 
-  it "should allow setting a connection type for a single action" do
+  it 'should allow setting a connection type for a single action' do
     controller = SeamlessDatabasePool::TestBaseController.new(session)
     expect(controller.process('read')).to eq :persistent
     expect(controller.process('other')).to eq :master
   end
 
-  it "should allow setting a connection type for actions" do
+  it 'should allow setting a connection type for actions' do
     expect(controller.process('edit')).to eq :master
     expect(controller.process('save')).to eq :master
   end
 
-  it "should allow setting a connection type for all actions" do
+  it 'should allow setting a connection type for all actions' do
     expect(controller.process('other')).to eq :random
   end
 
@@ -114,7 +113,7 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
     expect(controller.process('read')).to eq :persistent
   end
 
-  it "should be able to force using the master connection on the next request" do
+  it 'should be able to force using the master connection on the next request' do
     # First request
     expect(controller.process('read')).to eq :persistent
     controller.use_master_db_connection_on_next_request
@@ -126,20 +125,20 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
     expect(controller.process('read')).to eq :persistent
   end
 
-  context "when set unknown method" do
+  context 'when set unknown method' do
     let(:controller_class) do
       Class.new(base_controller_class) do
         use_database_pool({ base_action: :lala_foo })
       end
     end
 
-    it "raises" do
+    it 'raises' do
       # expect(controller.send(:process_action, 'base_action')).to eq :persistent
       expect { controller.send(:process_action, 'base_action') }.to raise_error(/Invalid read pool method/)
     end
   end
 
-  it "should not break trying to force the master connection if sessions are not enabled" do
+  it 'should not break trying to force the master connection if sessions are not enabled' do
     expect(controller.process('read')).to eq :persistent
     controller.use_master_db_connection_on_next_request
 
@@ -148,20 +147,20 @@ RSpec.describe SeamlessDatabasePool::ControllerFilter do
     expect(controller.process('read')).to eq :persistent
   end
 
-  it "should force the master connection on the next request for a redirect in master connection block" do
+  it 'should force the master connection on the next request for a redirect in master connection block' do
     controller = SeamlessDatabasePool::TestOtherController.new(session)
-    expect(controller.process('redirect_master_action')).to eq({:action => :read})
+    expect(controller.process('redirect_master_action')).to eq({ action: :read })
 
     expect(controller.process('read')).to eq :master
   end
 
-  it "should not force the master connection on the next request for a redirect not in master connection block" do
-    expect(controller.process('redirect_read_action')).to eq({:action => :read})
+  it 'should not force the master connection on the next request for a redirect not in master connection block' do
+    expect(controller.process('redirect_read_action')).to eq({ action: :read })
 
     expect(controller.process('read')).to eq :persistent
   end
 
-  it "should work with a Rails 2 controller" do
+  it 'should work with a Rails 2 controller' do
     controller = SeamlessDatabasePool::TestRails2BaseController.new(session)
     expect(controller.process('read')).to eq :persistent
   end

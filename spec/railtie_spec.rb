@@ -10,21 +10,20 @@ class DummyApp < Rails::Application
 end
 
 RSpec.describe SeamlessDatabasePool::Railtie do
-  it "installs log subscriber" do
+  it 'installs log subscriber' do
     described_class.initializers.each(&:run)
     # expect ?
   end
 
-
-  it "installs rake task" do
+  it 'installs rake task' do
     require 'rake'
     require 'rake/testtask'
 
     Rails.application.load_tasks
-    expect(Rake.application["db:load_config"].actions.map(&:source_location).map(&:first)).to include(/seamless_database_pool/)
+    expect(Rake.application['db:load_config'].actions.map(&:source_location).map(&:first)).to include(/seamless_database_pool/)
 
     ActiveRecord::Tasks::DatabaseTasks.database_configuration = {}
-    Rake.application["db:load_config"].invoke
+    Rake.application['db:load_config'].invoke
     ActiveRecord::Base.configurations
   end
 end

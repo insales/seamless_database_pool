@@ -6,7 +6,7 @@ module SeamlessDatabasePool
       def database_configs
         adapters = ENV['TEST_ADAPTERS'].blank? ? [] : ENV['TEST_ADAPTERS'].split(/\s+/)
         configs = {}
-        YAML.load_file(File.expand_path("../database.yml", __FILE__)).each do |adapter_name, adapter_config|
+        YAML.load_file(File.expand_path('database.yml', __dir__)).each do |adapter_name, adapter_config|
           configs[adapter_name] = adapter_config if adapters.include?(adapter_name.downcase)
         end
         configs
@@ -28,10 +28,12 @@ module SeamlessDatabasePool
       end
 
       def create_tables
-        connection.create_table(table_name) do |t|
-          t.column :name, :string
-          t.column :value, :integer
-        end unless table_exists?
+        unless table_exists?
+          connection.create_table(table_name) do |t|
+            t.column :name, :string
+            t.column :value, :integer
+          end
+        end
         connection.clear_cache! if connection.respond_to?(:clear_cache!)
         undefine_attribute_methods if respond_to?(:undefine_attribute_methods)
       end
@@ -45,9 +47,9 @@ module SeamlessDatabasePool
       def cleanup_database!
         connection.disconnect!
         sqlite3_config = database_configs['sqlite3']
-        if sqlite3_config && File.exist?(sqlite3_config['database'])
-          File.delete(sqlite3_config['database'])
-        end
+        return unless sqlite3_config && File.exist?(sqlite3_config['database'])
+
+        File.delete(sqlite3_config['database'])
       end
     end
   end

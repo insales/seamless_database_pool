@@ -13,11 +13,11 @@ module SeamlessDatabasePool
   #     ...
   module ControllerFilter
     def self.included(base)
-      unless base.respond_to?(:use_database_pool)
-        base.extend(ClassMethods)
-        base.class_eval do
-          send(:prepend, ControllerFilterHooks)
-        end
+      return if base.respond_to?(:use_database_pool)
+
+      base.extend(ClassMethods)
+      base.class_eval do
+        send(:prepend, ControllerFilterHooks)
       end
     end
 
@@ -42,7 +42,8 @@ module SeamlessDatabasePool
           unless SeamlessDatabasePool::READ_CONNECTION_METHODS.include?(connection_method)
             raise "Invalid read pool method: #{connection_method}; should be one of #{SeamlessDatabasePool::READ_CONNECTION_METHODS.inspect}"
           end
-          actions = [actions] unless actions.kind_of?(Array)
+
+          actions = [actions] unless actions.is_a?(Array)
           actions.each do |action|
             remapped_options[action.to_sym] = connection_method
           end
@@ -68,7 +69,7 @@ module SeamlessDatabasePool
     private
 
     # Set the read only connection for a block. Used to set the connection for a controller action.
-    def set_read_only_connection_for_block(action)
+    def set_read_only_connection_for_block(action, &block)
       read_pool_method = nil
       if session
         read_pool_method = session[:next_request_db_connection]
@@ -77,9 +78,7 @@ module SeamlessDatabasePool
 
       read_pool_method ||= seamless_database_pool_options[action.to_sym] || seamless_database_pool_options[:all]
       if read_pool_method
-        SeamlessDatabasePool.set_read_only_connection_type(read_pool_method) do
-          yield
-        end
+        SeamlessDatabasePool.set_read_only_connection_type(read_pool_method, &block)
       else
         yield
       end
@@ -102,9 +101,7 @@ module SeamlessDatabasePool
     end
 
     def redirect_to(options = {}, response_status = {})
-      if SeamlessDatabasePool.read_only_connection_type(nil) == :master
-        use_master_db_connection_on_next_request
-      end
+      use_master_db_connection_on_next_request if SeamlessDatabasePool.read_only_connection_type(nil) == :master
 
       super(options, response_status)
     end
