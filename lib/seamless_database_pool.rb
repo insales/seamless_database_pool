@@ -141,26 +141,30 @@ module SeamlessDatabasePool
     # Pull out the master configuration for compatibility with such things as the Rails' rake db:*
     # tasks which only support known adapters.
     def master_database_configuration(database_configs)
-      if database_configs.respond_to?(:configs_for)
-        # in rails 6+ it is not a hash
-        # this is not compatible with rails native multiple databases
-        database_configs = database_configs.configs_for.to_h do |conf|
-          [
-            conf.env_name,
-            conf.respond_to?(:configuration_hash) && conf.configuration_hash.stringify_keys || conf.config
-          ]
+      database_configs = database_configs.configs_for.map do |conf|
+        next conf unless conf.adapter == 'seamless_database_pool'
+
+        new_conf = conf.configuration_hash.symbolize_keys
+        new_conf = new_conf.except(*%i[pool_adapter pool_weight master read_pool]).merge(
+          new_conf[:master].is_a?(Hash) && new_conf[:master].symbolize_keys.except(:pool_weight) || {},
+          { adapter: new_conf[:pool_adapter] }
+        )
+
+        if conf.respond_to?(:url)
+          ActiveRecord::DatabaseConfigurations::UrlConfig.new(conf.env_name, conf.name, conf.url, new_conf)
+        else
+          ActiveRecord::DatabaseConfigurations::HashConfig.new(conf.env_name, conf.name, new_conf)
         end
       end
 
-      database_configs.transform_values do |values|
-        if values['adapter'] == 'seamless_database_pool'
-          next values.except('pool_adapter', 'pool_weight', 'master', 'read_pool').merge(
-            values['master'].is_a?(Hash) && values['master'].except('pool_weight') || {},
-            { 'adapter' => values['pool_adapter'] }
-          )
-        end
-        values
-      end
+      ActiveRecord::DatabaseConfigurations.new(database_configs)
+    end
+  end
+
+  # to be loaded into ActiveRecord::Base.singleton_class in railtie for rake
+  module ActiveRecordDatabaseConfiguration
+    def configurations
+      SeamlessDatabasePool.master_database_configuration(super)
     end
   end
 end
