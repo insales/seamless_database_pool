@@ -1,5 +1,25 @@
+require:
+  - rubocop-rake
+  - rubocop-rspec
+
 AllCops:
   NewCops: enable
   Exclude:
     - gemfiles/*
 
+RSpec:
+  # TODO: enable
+  Enabled: false
+
+Metrics/BlockLength:
+  Exclude:
+    - Rakefile
+
+Style/OpenStructUse:
+  Exclude:
+    - spec/*
+
+Style/NumericPredicate: { Enabled: false }
+Metrics: { Enabled: false }
+
+Style/DocumentDynamicEvalDefinition: { Enabled: false } # TODO ?

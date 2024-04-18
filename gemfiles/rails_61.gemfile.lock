@@ -99,7 +99,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  actionpack (>= 3.2.0)
+  actionpack
   activerecord (~> 6.1.5)
   mysql2
   pg

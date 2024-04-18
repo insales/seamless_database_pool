@@ -59,7 +59,9 @@ module ActiveRecord
           begin
             require "active_record/connection_adapters/#{adapter}_adapter"
           rescue LoadError
-            raise LoadError.new("Please install the #{adapter} adapter: `gem install activerecord-#{adapter}-adapter` (#{$!})")
+            raise LoadError.new(
+              "Please install the #{adapter} adapter: `gem install activerecord-#{adapter}-adapter` (#{$!})"
+            )
           end
         end
 
@@ -105,8 +107,10 @@ module ActiveRecord
             master_methods.concat(connection_class.protected_instance_methods(false))
             master_methods.concat(connection_class.private_instance_methods(false))
           end
-          master_methods = master_methods.collect { |m| m.to_sym }.uniq
-          master_methods -= public_instance_methods(false) + protected_instance_methods(false) + private_instance_methods(false)
+          master_methods = master_methods.collect(&:to_sym).uniq
+          master_methods -= (
+            public_instance_methods(false) + protected_instance_methods(false) + private_instance_methods(false)
+          )
           master_methods -= read_only_methods
           master_methods -= %i[select_all select_one select_value select_values]
           master_methods -= clear_cache_methods
@@ -217,15 +221,15 @@ module ActiveRecord
       end
 
       def reconnect!
-        do_to_connections { |conn| conn.reconnect! }
+        do_to_connections(&:reconnect!)
       end
 
       def disconnect!
-        do_to_connections { |conn| conn.disconnect! }
+        do_to_connections(&:disconnect!)
       end
 
       def reset!
-        do_to_connections { |conn| conn.reset! }
+        do_to_connections(&:reset!)
       end
 
       def verify!(*ignored)
@@ -312,7 +316,7 @@ module ActiveRecord
         return available.connections unless available.expired?
 
         begin
-          @logger.info('Adding dead database connection back to the pool') if @logger
+          @logger&.info('Adding dead database connection back to the pool')
           available.reconnect!
         rescue StandardError => e
           # Couldn't reconnect so try again in a little bit
@@ -354,12 +358,12 @@ module ActiveRecord
         return if connections.length == available.length
 
         if connections.empty?
-          @logger.warn('All read connections are marked dead; trying them all again.') if @logger
+          @logger&.warn('All read connections are marked dead; trying them all again.')
           # No connections available so we might as well try them all again
           reset_available_read_connections
         else
           name = SeamlessDatabasePool.connection_names[conn.object_id]
-          @logger.warn("Removing #{name} from the connection pool for #{expire} seconds") if @logger
+          @logger&.warn("Removing #{name} from the connection pool for #{expire} seconds")
           # Available connections will now not include the suppressed connection for a while
           @available_read_connections.push(AvailableConnections.new(connections, conn, expire.seconds.from_now))
         end

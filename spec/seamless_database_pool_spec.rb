@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe 'SeamlessDatabasePool' do
@@ -27,12 +29,12 @@ describe 'SeamlessDatabasePool' do
 
   it 'should be able to set using random read connections' do
     connection = double(:connection)
-    expect(connection).to receive(:random_read_connection).and_return(:read_db_connection_1, :read_db_connection_2)
+    expect(connection).to receive(:random_read_connection).and_return(:read_db_connection1, :read_db_connection2)
     allow(connection).to receive(:using_master_connection?).and_return(false)
     SeamlessDatabasePool.use_random_read_connection
     expect(SeamlessDatabasePool.read_only_connection_type).to eq :random
-    expect(SeamlessDatabasePool.read_only_connection(connection)).to eq :read_db_connection_1
-    expect(SeamlessDatabasePool.read_only_connection(connection)).to eq :read_db_connection_2
+    expect(SeamlessDatabasePool.read_only_connection(connection)).to eq :read_db_connection1
+    expect(SeamlessDatabasePool.read_only_connection(connection)).to eq :read_db_connection2
   end
 
   it 'should use the master connection if the connection is forcing it' do
@@ -64,12 +66,12 @@ describe 'SeamlessDatabasePool' do
 
   it 'should be able to use random read connections within a block' do
     connection = double(:connection, master_connection: :master_db_connection)
-    expect(connection).to receive(:random_read_connection).and_return(:read_db_connection_1, :read_db_connection_2)
+    expect(connection).to receive(:random_read_connection).and_return(:read_db_connection1, :read_db_connection2)
     allow(connection).to receive(:using_master_connection?).and_return(false)
     expect(SeamlessDatabasePool.read_only_connection(connection)).to eq :master_db_connection
     expect(SeamlessDatabasePool.use_random_read_connection do
-      expect(SeamlessDatabasePool.read_only_connection(connection)).to eq :read_db_connection_1
-      expect(SeamlessDatabasePool.read_only_connection(connection)).to eq :read_db_connection_2
+      expect(SeamlessDatabasePool.read_only_connection(connection)).to eq :read_db_connection1
+      expect(SeamlessDatabasePool.read_only_connection(connection)).to eq :read_db_connection2
       :test_val
     end).to eq :test_val
     expect(SeamlessDatabasePool.read_only_connection(connection)).to eq :master_db_connection

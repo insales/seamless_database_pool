@@ -2,7 +2,7 @@
 module Arel
   module SqlCompiler
     # Hook into arel to use the compiler used by the master connection.
-    class Seamless_Database_PoolCompiler < GenericCompiler
+    class Seamless_Database_PoolCompiler < GenericCompiler # rubocop:disable Naming/ClassAndModuleCamelCase
       def self.new(relation)
         @compiler_classes ||= {}
         master_adapter = relation.engine.connection.master_connection.adapter_name

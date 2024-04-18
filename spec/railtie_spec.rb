@@ -20,7 +20,9 @@ RSpec.describe SeamlessDatabasePool::Railtie do
     require 'rake/testtask'
 
     Rails.application.load_tasks
-    expect(Rake.application['db:load_config'].actions.map(&:source_location).map(&:first)).to include(/seamless_database_pool/)
+    expect(
+      Rake.application['db:load_config'].actions.map(&:source_location).map(&:first)
+    ).to include(/seamless_database_pool/)
 
     ActiveRecord::Tasks::DatabaseTasks.database_configuration = {}
     Rake.application['db:load_config'].invoke

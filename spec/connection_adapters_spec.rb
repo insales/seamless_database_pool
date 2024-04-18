@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 require 'active_record/connection_adapters/read_only_adapter'
 
@@ -5,7 +7,7 @@ describe 'Test connection adapters' do
   if SeamlessDatabasePool::TestModel.database_configs.empty?
     puts 'No adapters specified for testing. Specify the adapters with TEST_ADAPTERS variable'
   else
-    SeamlessDatabasePool::TestModel.database_configs.keys.each do |adapter|
+    SeamlessDatabasePool::TestModel.database_configs.each_key do |adapter|
       context adapter do
         let(:model) { SeamlessDatabasePool::TestModel.db_model(adapter) }
         let(:connection) { model.connection }
@@ -120,9 +122,9 @@ describe 'Test connection adapters' do
 
           it 'should send columns to the read connection' do
             results = connection.columns(model.table_name)
-            columns = results.collect { |c| c.name }.sort.should
+            columns = results.collect(&:name).sort.should
             expect(columns).to eq %w[id name value]
-            expect(columns).to eq master_connection.columns(model.table_name).collect { |c| c.name }.sort
+            expect(columns).to eq master_connection.columns(model.table_name).collect(&:name).sort
             expect(results).to be_read_only
           end
 
@@ -174,7 +176,8 @@ describe 'Test connection adapters' do
 
         context 'master connection' do
           let(:insert_sql) do
-            "INSERT INTO #{connection.quote_table_name(model.table_name)} (#{connection.quote_column_name('name')}) VALUES ('new')"
+            "INSERT INTO #{connection.quote_table_name(model.table_name)} " \
+              "(#{connection.quote_column_name('name')}) VALUES ('new')"
           end
           let(:update_sql) do
             "UPDATE #{connection.quote_table_name(model.table_name)} SET #{connection.quote_column_name('value')} = 2"
@@ -185,7 +188,7 @@ describe 'Test connection adapters' do
             expect { read_connection.update(update_sql)  }.to raise_error(NotImplementedError)
             expect { read_connection.update(insert_sql)  }.to raise_error(NotImplementedError)
             expect { read_connection.update(delete_sql)  }.to raise_error(NotImplementedError)
-            expect { read_connection.transaction {} }.to raise_error(NotImplementedError)
+            expect { read_connection.transaction { nil } }.to raise_error(NotImplementedError)
             expect { read_connection.create_table(:test) }.to raise_error(NotImplementedError)
           end
 

@@ -40,7 +40,10 @@ module SeamlessDatabasePool
         remapped_options = seamless_database_pool_options
         options.each_pair do |actions, connection_method|
           unless SeamlessDatabasePool::READ_CONNECTION_METHODS.include?(connection_method)
-            raise "Invalid read pool method: #{connection_method}; should be one of #{SeamlessDatabasePool::READ_CONNECTION_METHODS.inspect}"
+            raise(
+              "Invalid read pool method: #{connection_method}; " \
+              "should be one of #{SeamlessDatabasePool::READ_CONNECTION_METHODS.inspect}"
+            )
           end
 
           actions = [actions] unless actions.is_a?(Array)

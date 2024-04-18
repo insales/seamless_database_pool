@@ -1,6 +1,9 @@
+# frozen_string_literal: true
+
 require 'seamless_database_pool/log_subscriber'
 
 module SeamlessDatabasePool
+  # railtie
   class Railtie < ::Rails::Railtie
     initializer 'seamless_database_pool.initialize_logger' do |_app|
       ActiveRecord::LogSubscriber.log_subscribers.each do |subscriber|

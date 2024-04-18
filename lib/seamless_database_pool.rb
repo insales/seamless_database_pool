@@ -22,7 +22,7 @@ module SeamlessDatabasePool
   # Adapter name to class name map. This exists because there isn't an obvious way to translate things like
   # sqlite3 to SQLite3. The adapters that ship with ActiveRecord are defined here. If you use
   # an adapter that doesn't translate directly to camel case, then add the mapping here in an initializer.
-  ADAPTER_TO_CLASS_NAME_MAP = { 'sqlite' => 'SQLite', 'sqlite3' => 'SQLite3', 'postgresql' => 'PostgreSQL' }
+  ADAPTER_TO_CLASS_NAME_MAP = { 'sqlite' => 'SQLite', 'sqlite3' => 'SQLite3', 'postgresql' => 'PostgreSQL' } # rubocop:disable Style/MutableConstant
 
   READ_CONNECTION_METHODS = %i[master persistent random]
 
@@ -150,7 +150,7 @@ module SeamlessDatabasePool
           { adapter: new_conf[:pool_adapter] }
         )
 
-        if (conf.respond_to?(:url) && (url = conf.url)) || url = new_conf.delete(:url)
+        if (conf.respond_to?(:url) && (url = conf.url)) || (url = new_conf.delete(:url))
           ActiveRecord::DatabaseConfigurations::UrlConfig.new(conf.env_name, conf.name, url, new_conf)
         else
           ActiveRecord::DatabaseConfigurations::HashConfig.new(conf.env_name, conf.name, new_conf)
