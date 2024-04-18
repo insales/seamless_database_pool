@@ -188,16 +188,9 @@ module ActiveRecord
         false
       end
 
-      if ::ActiveRecord::VERSION::MAJOR <= 5
-        def transaction(*options)
-          SeamlessDatabasePool.use_master_connection
-          super
-        end
-      else
-        def transaction(**options)
-          SeamlessDatabasePool.use_master_connection
-          super
-        end
+      def transaction(**options)
+        SeamlessDatabasePool.use_master_connection
+        super
       end
 
       def visitor=(visitor)

@@ -4,4 +4,7 @@ source 'https://rubygems.org'
 gemspec
 
 gem 'rake'
-gem 'appraisal', require: false
+
+unless defined?(Appraisal)
+  gem 'appraisal', require: false
+end
