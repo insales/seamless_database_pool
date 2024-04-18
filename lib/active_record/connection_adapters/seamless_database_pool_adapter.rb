@@ -1,4 +1,3 @@
-require 'ruby2_keywords'
 
 module ActiveRecord
   class Base
@@ -30,7 +29,7 @@ module ActiveRecord
               read_connections << conn
               pool_weights[conn] = read_config[:pool_weight]
               SeamlessDatabasePool.connection_names[conn.object_id] = "slave_#{i}"
-            rescue Exception => e
+            rescue StandardError => e
               if logger
                 logger.error("Error connecting to read connection #{read_config.inspect}")
                 logger.error(e)
@@ -71,7 +70,7 @@ module ActiveRecord
       # Force reload to use the master connection since it's probably being called for a reason.
       def reload(*args)
         SeamlessDatabasePool.use_master_connection do
-          super *args
+          super(*args)
         end
       end
     end

@@ -7,4 +7,8 @@ gem 'rake'
 
 unless defined?(Appraisal)
   gem 'appraisal', require: false
+
+  group :lint do
+    gem 'rubocop'
+  end
 end

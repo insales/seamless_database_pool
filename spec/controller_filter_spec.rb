@@ -2,87 +2,88 @@
 
 require 'spec_helper'
 
-RSpec.describe SeamlessDatabasePool::ControllerFilter do
-  module SeamlessDatabasePool
-    class TestApplicationController
-      attr_reader :session
+module SeamlessDatabasePool
+  class TestApplicationController
+    attr_reader :session
 
-      def initialize(session)
-        @session = session
-      end
-
-      def process(action, *args)
-        send action
-      end
-
-      def redirect_to(options = {}, response_status = {})
-        options
-      end
-
-      def base_action
-        ::SeamlessDatabasePool.read_only_connection_type
-      end
+    def initialize(session)
+      @session = session
     end
 
-    class TestBaseController < TestApplicationController
-      include ::SeamlessDatabasePool::ControllerFilter
-
-      use_database_pool :read => :persistent
-
-      def read
-        ::SeamlessDatabasePool.read_only_connection_type
-      end
-
-      def other
-        ::SeamlessDatabasePool.read_only_connection_type
-      end
+    def process(action, *_args)
+      send action
     end
 
-    class TestOtherController < TestBaseController
-      use_database_pool :all => :random, [:edit, :save, :redirect_master_action] => :master
-
-      def edit
-        ::SeamlessDatabasePool.read_only_connection_type
-      end
-
-      def save
-        ::SeamlessDatabasePool.read_only_connection_type
-      end
-
-      def redirect_master_action
-        redirect_to(:action => :read)
-      end
-
-      def redirect_read_action
-        redirect_to(:action => :read)
-      end
+    def redirect_to(options = {}, _response_status = {})
+      options
     end
 
-    class TestRails2ApplicationController < TestApplicationController
-      attr_reader :action_name
-
-      def process(action, *args)
-        @action_name = action
-        perform_action
-      end
-
-      private
-
-      def perform_action
-        send action_name
-      end
-    end
-
-    class TestRails2BaseController < TestRails2ApplicationController
-      include ::SeamlessDatabasePool::ControllerFilter
-
-      use_database_pool :read => :persistent
-
-      def read
-        ::SeamlessDatabasePool.read_only_connection_type
-      end
+    def base_action
+      ::SeamlessDatabasePool.read_only_connection_type
     end
   end
+
+  class TestBaseController < TestApplicationController
+    include ::SeamlessDatabasePool::ControllerFilter
+
+    use_database_pool :read => :persistent
+
+    def read
+      ::SeamlessDatabasePool.read_only_connection_type
+    end
+
+    def other
+      ::SeamlessDatabasePool.read_only_connection_type
+    end
+  end
+
+  class TestOtherController < TestBaseController
+    use_database_pool :all => :random, [:edit, :save, :redirect_master_action] => :master
+
+    def edit
+      ::SeamlessDatabasePool.read_only_connection_type
+    end
+
+    def save
+      ::SeamlessDatabasePool.read_only_connection_type
+    end
+
+    def redirect_master_action
+      redirect_to(:action => :read)
+    end
+
+    def redirect_read_action
+      redirect_to(:action => :read)
+    end
+  end
+
+  class TestRails2ApplicationController < TestApplicationController
+    attr_reader :action_name
+
+    def process(action, *_args)
+      @action_name = action
+      perform_action
+    end
+
+    private
+
+    def perform_action
+      send action_name
+    end
+  end
+
+  class TestRails2BaseController < TestRails2ApplicationController
+    include ::SeamlessDatabasePool::ControllerFilter
+
+    use_database_pool :read => :persistent
+
+    def read
+      ::SeamlessDatabasePool.read_only_connection_type
+    end
+  end
+end
+
+RSpec.describe SeamlessDatabasePool::ControllerFilter do
 
   let(:session){Hash.new}
   let(:controller){SeamlessDatabasePool::TestOtherController.new(session)}
