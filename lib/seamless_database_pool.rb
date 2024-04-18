@@ -150,8 +150,8 @@ module SeamlessDatabasePool
           { adapter: new_conf[:pool_adapter] }
         )
 
-        if conf.respond_to?(:url)
-          ActiveRecord::DatabaseConfigurations::UrlConfig.new(conf.env_name, conf.name, conf.url, new_conf)
+        if conf.respond_to?(:url) && (url = conf.url) || url = new_conf.delete(:url)
+          ActiveRecord::DatabaseConfigurations::UrlConfig.new(conf.env_name, conf.name, url, new_conf)
         else
           ActiveRecord::DatabaseConfigurations::HashConfig.new(conf.env_name, conf.name, new_conf)
         end

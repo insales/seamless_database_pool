@@ -74,6 +74,43 @@ describe "SeamlessDatabasePoolAdapter ActiveRecord::Base extension" do
     expect(conn).to eq pool_connection
   end
 
+  it "should support urls in config" do
+    options = {
+      adapter: 'seamless_database_pool',
+      pool_adapter: 'reader',
+      username: 'user',
+      master: {
+        url: 'writer://master-host'
+      },
+      read_pool: [
+        {'host' => 'read_host_1'},
+        {'host' => 'read_host_2', 'pool_weight' => '2'},
+        { 'url' => 'reader://read-host-3', 'pool_weight' => '0' }
+      ]
+    }
+
+    pool_connection = double(:connection)
+    master_connection = SeamlessDatabasePool::MockConnection.new("master")
+    read_connection_1 = SeamlessDatabasePool::MockConnection.new("read_1")
+    read_connection_2 = SeamlessDatabasePool::MockConnection.new("read_2")
+    logger = ActiveRecord::Base.logger
+    weights = {master_connection => 1, read_connection_1 => 1, read_connection_2 => 2}
+
+    expect(ActiveRecord::Base).to receive(:writer_connection).with({'adapter' => 'writer', 'host' => 'master-host', 'username' => 'user', 'pool_weight' => 1}).and_return(master_connection)
+    expect(ActiveRecord::Base).to receive(:reader_connection).with({'adapter' => 'reader', 'host' => 'read_host_1', 'username' => 'user', 'pool_weight' => 1}).and_return(read_connection_1)
+    expect(ActiveRecord::Base).to receive(:reader_connection).with({'adapter' => 'reader', 'host' => 'read_host_2', 'username' => 'user', 'pool_weight' => 2}).and_return(read_connection_2)
+
+    klass = double(:class)
+    expect(ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter).to receive(:adapter_class).with(master_connection).and_return(klass)
+    expect(klass).to receive(:new).with(nil, logger, master_connection, [read_connection_1, read_connection_2], weights, options).and_return(pool_connection)
+
+    expect(ActiveRecord::Base).to receive(:establish_adapter).with('writer')
+    expect(ActiveRecord::Base).to receive(:establish_adapter).with('reader').twice
+
+    conn = ActiveRecord::Base.seamless_database_pool_connection(options)
+    expect(conn).to eq pool_connection
+  end
+
   it "should raise an error if the adapter would be recursive" do
     expect do
       ActiveRecord::Base.seamless_database_pool_connection({ master: { adapter: 'seamless_database_pool' } })
