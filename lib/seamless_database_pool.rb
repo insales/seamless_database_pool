@@ -141,7 +141,9 @@ module SeamlessDatabasePool
     # Pull out the master configuration for compatibility with such things as the Rails' rake db:*
     # tasks which only support known adapters.
     def master_database_configuration(database_configs)
-      database_configs = database_configs.configs_for.map do |conf|
+      # will only work for rails 6.1 and higher as for the time of writing 6.1 is the "youngest" supported
+      configs_attributes = Rails::VERSION::MAJOR < 7 ? { include_replicas: true } : { include_hidden: true }
+      database_configs = database_configs.configs_for(**configs_attributes).map do |conf|
         next conf unless conf.adapter == 'seamless_database_pool'
 
         new_conf = conf.configuration_hash.symbolize_keys

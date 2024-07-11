@@ -210,7 +210,7 @@ describe 'SeamlessDatabasePool' do
 
       it 'should pull out the master configurations for compatibility with rake db:* tasks' do
         expect(master_database_configuration).to be_a(ActiveRecord::DatabaseConfigurations)
-        expect(master_database_configuration.configurations.size).to eq(4) # except replica
+        expect(master_database_configuration.configurations.size).to eq(5)
 
         expect(master_database_configuration.configs_for(env_name: 'development').map(&:configuration_hash)).to eq(
           [
