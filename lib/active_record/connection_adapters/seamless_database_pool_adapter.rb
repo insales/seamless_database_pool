@@ -1,58 +1,52 @@
+require "active_record/database_configurations"
+
 module ActiveRecord
+  module ConnectionHandling # :nodoc:
+    # legacy way (up to 7.1)
+    def seamless_database_pool_connection(config)
+      seamless_database_pool_adapter_class.new(config)
+    end
+
+    # rails 7.1 (but in fact not used in rails?)
+    def seamless_database_pool_adapter_class
+      ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter
+    end
+
+    # rails 7.2+
+    if ConnectionAdapters.respond_to?(:register)
+      ConnectionAdapters.register(
+        "seamless_database_pool",
+        "ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter",
+        "active_record/connection_adapters/seamless_database_pool_adapter"
+      )
+    end
+
+    if ActiveRecord.gem_version <= '7.1'
+      # known builtin adapters
+      # TODO: remove ADAPTER_TO_CLASS_NAME_MAP
+      {
+        sqlite3: ["ActiveRecord::ConnectionAdapters::SQLite3Adapter", "active_record/connection_adapters/sqlite3_adapter"],
+        mysql2: ["ActiveRecord::ConnectionAdapters::Mysql2Adapter", "active_record/connection_adapters/mysql2_adapter"],
+        postgresql: ["ActiveRecord::ConnectionAdapters::PostgreSQLAdapter", "active_record/connection_adapters/postgresql_adapter"]
+      }.each_pair do |known_adapter, (class_name, path_to_adapter)|
+        define_method(:"#{known_adapter}_adapter_class") do
+          require path_to_adapter
+          # rails rescues LoadError and provides more info
+          Object.const_get(class_name)
+        end
+      end
+    end
+  end
+
   class Base
     class << self
-      def seamless_database_pool_connection(config)
-        pool_weights = {}
-
-        config = config.with_indifferent_access
-        default_config = { pool_weight: 1 }.merge(config.merge(adapter: config[:pool_adapter])).with_indifferent_access
-        default_config.delete(:master)
-        default_config.delete(:read_pool)
-        default_config.delete(:pool_adapter)
-
-        master_config = default_config.merge(config[:master]).with_indifferent_access
-        if (url = master_config.delete(:url))
-          master_config.merge!(ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.new(url).to_hash)
-        end
-        establish_adapter(master_config[:adapter])
-        master_connection = send(:"#{master_config[:adapter]}_connection", master_config)
-        pool_weights[master_connection] = master_config[:pool_weight].to_i if master_config[:pool_weight].to_i > 0
-
-        SeamlessDatabasePool.connection_names[master_connection.object_id] = 'master'
-
-        read_connections = []
-        config[:read_pool]&.each_with_index do |read_config, i|
-          read_config = default_config.merge(read_config).with_indifferent_access
-          if (url = read_config.delete(:url))
-            read_config.merge!(ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.new(url).to_hash)
-          end
-          read_config[:pool_weight] = read_config[:pool_weight].to_i
-          next unless read_config[:pool_weight] > 0
-
-          begin
-            establish_adapter(read_config[:adapter])
-            conn = send(:"#{read_config[:adapter]}_connection", read_config)
-            read_connections << conn
-            pool_weights[conn] = read_config[:pool_weight]
-            SeamlessDatabasePool.connection_names[conn.object_id] = "slave_#{i}"
-          rescue StandardError => e
-            if logger
-              logger.error("Error connecting to read connection #{read_config.inspect}")
-              logger.error(e)
-            end
-          end
-        end
-
-        klass = ::ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter.adapter_class(master_connection)
-        klass.new(nil, logger, master_connection, read_connections, pool_weights, config)
-      end
-
       def establish_adapter(adapter)
         raise AdapterNotSpecified.new('database configuration does not specify adapter') unless adapter
         raise AdapterNotFound.new('database pool must specify adapters') if adapter == 'seamless_database_pool'
 
         adapter_method = "#{adapter}_connection"
         return if respond_to?(adapter_method)
+        return if ActiveRecord::ConnectionAdapters.respond_to?(:resolve)
 
         begin
           require 'rubygems'
@@ -91,19 +85,77 @@ module ActiveRecord
       attr_reader :read_connections, :master_connection
 
       class << self
+        def new(*args)
+          return super unless self == SeamlessDatabasePoolAdapter
+
+          config_or_deprecated_connection = args.first
+          config = (
+            config_or_deprecated_connection.is_a?(Hash) ? config_or_deprecated_connection : args[3]
+          ).deep_symbolize_keys
+          master_adapter = config.dig(:master, :adapter) || config.dig(:master, :url)&.then { URI.parse(_1).scheme } || config.dig(:pool_adapter)
+          master_connection_class = if ActiveRecord::ConnectionAdapters.respond_to?(:resolve) # rails 7.2+
+                                      ActiveRecord::ConnectionAdapters.resolve(master_adapter)
+                                    elsif ActiveRecord::Base.respond_to?(:"#{master_adapter}_adapter_class")
+                                      ActiveRecord::Base.public_send(:"#{master_adapter}_adapter_class") # rails 7.1
+                                    else
+                                      raise "Cannot resolve class for master adapter #{master_adapter}, does it implement rails 7.1+ api?"
+                                    end
+          adapter_class(master_connection_class).new(*args)
+        end
+
+        def prepare_config(config)
+          config = config.with_indifferent_access
+          default_config = { pool_weight: 1 }.merge(config.merge(adapter: config[:pool_adapter])).with_indifferent_access
+          default_config.delete(:master)
+          default_config.delete(:read_pool)
+          default_config.delete(:pool_adapter)
+
+          master_config = default_config.merge(config[:master]).with_indifferent_access
+          if (url = master_config.delete(:url))
+            master_config.merge!(ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.new(url).to_hash)
+          end
+
+          read_configs = config[:read_pool]&.map do |read_config|
+            read_config = default_config.merge(read_config).with_indifferent_access
+            if (url = read_config.delete(:url))
+              read_config.merge!(ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.new(url).to_hash)
+            end
+            read_config[:pool_weight] = read_config[:pool_weight].to_i
+
+            read_config
+          end
+
+          [master_config, read_configs || []]
+        end
+
+        def instantiate_sub_adapter(config, name = 'master')
+          adapter_name = config[:adapter]
+          ActiveRecord::Base.establish_adapter(adapter_name) # see above, todo: refactor
+
+          if ActiveRecord::ConnectionAdapters.respond_to?(:resolve)
+            ActiveRecord::ConnectionAdapters.resolve(adapter_name).new(config)
+          else
+            ActiveRecord::Base.send(:"#{adapter_name}_connection", config)
+          end.tap do |conn|
+            SeamlessDatabasePool.connection_names[conn.object_id] = name
+          end
+        end
+
         # Create an anonymous class that extends this one and proxies methods to the pool connections.
-        def adapter_class(master_connection)
-          adapter_class_name = master_connection.adapter_name.classify
+        def adapter_class(master_connection_class)
+          raise AdapterNotFound.new('database pool must not be recursive') if master_connection_class <= SeamlessDatabasePoolAdapter
+
+          adapter_class_name = master_connection_class.name.demodulize
           return const_get(adapter_class_name) if const_defined?(adapter_class_name, false)
 
           # Define methods to proxy to the appropriate pool
           read_only_methods = %i[select select_rows execute tables columns]
-          clear_cache_methods = %i[insert update delete]
+          clear_cache_methods = %i[insert update delete with_raw_connection]
 
           # Get a list of all methods redefined by the underlying adapter. These will be
           # proxied to the master connection.
           master_methods = []
-          override_classes = (master_connection.class.ancestors - AbstractAdapter.ancestors)
+          override_classes = (master_connection_class.ancestors - AbstractAdapter.ancestors)
           override_classes.each do |connection_class|
             master_methods.concat(connection_class.public_instance_methods(false))
             master_methods.concat(connection_class.protected_instance_methods(false))
@@ -118,6 +170,9 @@ module ActiveRecord
           master_methods -= clear_cache_methods
 
           klass = Class.new(self)
+          (master_connection_class.singleton_class.included_modules -
+            AbstractAdapter.singleton_class.included_modules).each { klass.extend(_1) }
+
           master_methods.each do |method_name|
             klass.class_eval <<-RUBY, __FILE__, __LINE__ + 1
               ruby2_keywords def #{method_name}(*args, &block)
@@ -165,12 +220,35 @@ module ActiveRecord
         end
       end
 
-      def initialize(connection, logger, master_connection, read_connections, pool_weights, config)
-        @master_connection = master_connection
-        @read_connections = read_connections.dup.freeze
-        @use_master = nil
+      def initialize(config_or_deprecated_connection, deprecated_logger = nil, deprecated_connection_options = nil, deprecated_config = nil)
+      # def initialize(...)
+        # to call super we already need master_connection, so have to deal with config here:
+        @config = config_or_deprecated_connection.is_a?(Hash) ? config_or_deprecated_connection : deprecated_config
+        master_config, read_configs = self.class.prepare_config(@config)
 
-        super(connection, logger, config)
+        pool_weights = {}
+        @use_master = nil
+        @master_connection = SeamlessDatabasePoolAdapter.instantiate_sub_adapter(master_config, 'master')
+        pool_weights[@master_connection] = master_config[:pool_weight].to_i if master_config[:pool_weight].to_i > 0
+
+        super(nil, deprecated_logger, @config)
+
+        @read_connections = []
+        read_configs.each_with_index do |read_config, i|
+          next unless read_config[:pool_weight] > 0
+
+          conn = SeamlessDatabasePoolAdapter.instantiate_sub_adapter(read_config, "slave_#{i}")
+          @read_connections << conn
+          pool_weights[conn] = read_config[:pool_weight]
+        rescue StandardError => e
+          if logger
+            logger.error("Error connecting to read connection #{read_config.inspect}")
+            logger.error(e)
+          end
+          raise if defined?(Rails) && Rails.env.test? # nb not all tests have this
+          raise
+        end
+        @read_connections = read_connections.freeze
 
         @weighted_read_connections = []
         pool_weights.each_pair do |conn, weight|

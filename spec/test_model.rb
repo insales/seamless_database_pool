@@ -41,7 +41,7 @@ module SeamlessDatabasePool
       end
 
       def drop_tables
-        connection.drop_table(table_name)
+        connection.drop_table(table_name, if_exists: true)
         connection.clear_cache! if connection.respond_to?(:clear_cache!)
         undefine_attribute_methods if respond_to?(:undefine_attribute_methods)
       end
