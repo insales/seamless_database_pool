@@ -77,7 +77,7 @@ describe 'Test connection adapters' do
             found = model.find(record_id)
             expect(found.value).to eq 1
             connection.master_connection.update("UPDATE #{model.table_name} SET value = 0 WHERE id = #{record_id}")
-            pending "rails 7.1 seems to invalidate cache" if (Rails::VERSION::MAJOR*10 + Rails::VERSION::MINOR) >= 71
+            pending "rails 7.1 seems to invalidate cache" if ActiveRecord.gem_version >= '7.1'
             expect(model.find(record_id).value).to eq 1
           end
         end
@@ -229,11 +229,20 @@ describe 'Test connection adapters' do
 
           it 'should properly dump the schema' do
             with_driver = StringIO.new
-            ActiveRecord::SchemaDumper.dump(connection, with_driver)
+            conn_pool, master_pool = if ActiveRecord.gem_version >= '7.2'
+                                       [
+                                         double('connection_poool').tap { allow(_1).to receive(:with_connection).and_yield(connection) },
+                                         double('master_poool').tap { allow(_1).to receive(:with_connection).and_yield(master_connection) }
+                                       ]
+                                     else
+                                       [connection, master_connection]
+                                     end
+            ActiveRecord::SchemaDumper.dump(conn_pool, with_driver)
 
             without_driver = StringIO.new
-            ActiveRecord::SchemaDumper.dump(master_connection, without_driver)
+            ActiveRecord::SchemaDumper.dump(master_pool, without_driver)
 
+            expect(with_driver.string).to be_present
             expect(with_driver.string).to eq without_driver.string
           end
 

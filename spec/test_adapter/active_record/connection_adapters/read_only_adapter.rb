@@ -1,11 +1,16 @@
 # frozen_string_literal: true
 
 module ActiveRecord
-  class Base
-    def self.read_only_connection(config)
-      real_adapter = config.delete('real_adapter')
-      connection = send("#{real_adapter}_connection", config.merge('adapter' => real_adapter))
-      ConnectionAdapters::ReadOnlyAdapter.new(connection)
+  module ConnectionHandling
+    def read_only_connection(config)
+      ConnectionAdapters::ReadOnlyAdapter.new(config)
+    end
+
+    if ConnectionAdapters.respond_to?(:register)
+      ConnectionAdapters.register(
+        "read_only", "ActiveRecord::ConnectionAdapters::ReadOnlyAdapter",
+        "active_record/connection_adapters/read_only_adapter"
+      )
     end
   end
 
@@ -32,10 +37,15 @@ module ActiveRecord
         RUBY
       end
 
-      def initialize(connection)
-        @connection = connection
+      def initialize(config)
+        real_adapter = config.delete('real_adapter')
+        @connection = if ActiveRecord::ConnectionAdapters.respond_to?(:resolve) # rails 7.2
+                        ActiveRecord::ConnectionAdapters.resolve(real_adapter).new(config.merge('adapter' => real_adapter))
+                      else
+                        ActiveRecord::Base.send(:"#{real_adapter}_connection", config.merge('adapter' => real_adapter))
+                      end
         @connected = true
-        super
+        super(@connection, nil, config)
       end
 
       def test_select
