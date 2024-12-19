@@ -6,7 +6,7 @@ module SeamlessDatabasePool
 
     class << self
       def database_configs
-        adapters = ENV['TEST_ADAPTERS'].blank? ? [] : ENV['TEST_ADAPTERS'].split(/\s+/)
+        adapters = ENV['TEST_ADAPTERS'].blank? ? %w[sqlite3] : ENV['TEST_ADAPTERS'].split(/\s+/)
         configs = {}
         YAML.load_file(File.expand_path('database.yml', __dir__)).each do |adapter_name, adapter_config|
           configs[adapter_name] = adapter_config if adapters.include?(adapter_name.downcase)

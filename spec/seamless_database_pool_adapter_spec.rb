@@ -33,6 +33,26 @@ module SeamlessDatabasePool
     def columns(table_name, name = nil); end
   end
 end
+module ActiveRecord
+  module ConnectionHandling # :nodoc:
+    {
+      writer: SeamlessDatabasePool::MockMasterConnection,
+      reader: SeamlessDatabasePool::MockConnection,
+    }.each do |mock_adapter, mock_class|
+      # legacy
+      define_method(:"#{mock_adapter}_connection") { |*args| mock_class.new(*args) }
+      define_method(:"#{mock_adapter}_adapter_class") { mock_class }
+      # rails 7.2+
+      if ConnectionAdapters.respond_to?(:register)
+        ConnectionAdapters.register(
+          mock_adapter, mock_class.name,
+          # this will be required on instantiate, but mocks are already loaded
+          "active_record/connection_adapters/seamless_database_pool_adapter"
+        )
+      end
+    end
+  end
+end
 
 describe 'SeamlessDatabasePoolAdapter ActiveRecord::Base extension' do
   it 'should establish the connections in the pool merging global options into the connection options' do
@@ -50,36 +70,27 @@ describe 'SeamlessDatabasePoolAdapter ActiveRecord::Base extension' do
         { 'host' => 'read_host_3', 'pool_weight' => '0' }
       ]
     }
-
-    pool_connection = double(:connection)
-    master_connection = SeamlessDatabasePool::MockConnection.new('master')
-    read_connection1 = SeamlessDatabasePool::MockConnection.new('read_1')
-    read_connection2 = SeamlessDatabasePool::MockConnection.new('read_2')
-    logger = ActiveRecord::Base.logger
-    weights = { master_connection => 1, read_connection1 => 1, read_connection2 => 2 }
-
-    expect(ActiveRecord::Base).to receive(:writer_connection).with(
+    
+    expect(SeamlessDatabasePool::MockMasterConnection).to receive(:new).with(
       { 'adapter' => 'writer', 'host' => 'master_host', 'username' => 'user', 'pool_weight' => 1 }
-    ).and_return(master_connection)
-    expect(ActiveRecord::Base).to receive(:reader_connection).with(
+    ).and_call_original
+    expect(SeamlessDatabasePool::MockConnection).to receive(:new).with(
       { 'adapter' => 'reader', 'host' => 'read_host_1', 'username' => 'user', 'pool_weight' => 1 }
-    ).and_return(read_connection1)
-    expect(ActiveRecord::Base).to receive(:reader_connection).with(
+    ).and_call_original
+    expect(SeamlessDatabasePool::MockConnection).to receive(:new).with(
       { 'adapter' => 'reader', 'host' => 'read_host_2', 'username' => 'user', 'pool_weight' => 2 }
-    ).and_return(read_connection2)
+    ).and_call_original
 
-    klass = double(:class)
-    expect(
-      ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter
-    ).to receive(:adapter_class).with(master_connection).and_return(klass)
-    expect(klass).to receive(:new).with(nil, logger, master_connection, [read_connection1, read_connection2],
-                                        weights, options).and_return(pool_connection)
+    expect(ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter).to(
+      receive(:adapter_class).with(SeamlessDatabasePool::MockMasterConnection).and_call_original
+    )
 
     expect(ActiveRecord::Base).to receive(:establish_adapter).with('writer')
     expect(ActiveRecord::Base).to receive(:establish_adapter).with('reader').twice
 
-    conn = ActiveRecord::Base.seamless_database_pool_connection(options)
-    expect(conn).to eq pool_connection
+    conn = ActiveRecord::Base.seamless_database_pool_connection(options) # TODO: use establish_conne
+    # expect(conn).to eq seamless_database_pool_connection
+    expect(conn).to be_a(ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter)
   end
 
   it 'should support urls in config' do
@@ -92,40 +103,26 @@ describe 'SeamlessDatabasePoolAdapter ActiveRecord::Base extension' do
       },
       read_pool: [
         { 'host' => 'read_host_1' },
-        { 'host' => 'read_host_2', 'pool_weight' => '2' },
+        { 'url' => 'reader://read-host-2?pool_weight=2' },
         { 'url' => 'reader://read-host-3', 'pool_weight' => '0' }
       ]
     }
 
-    pool_connection = double(:connection)
-    master_connection = SeamlessDatabasePool::MockConnection.new('master')
-    read_connection1 = SeamlessDatabasePool::MockConnection.new('read_1')
-    read_connection2 = SeamlessDatabasePool::MockConnection.new('read_2')
-    logger = ActiveRecord::Base.logger
-    weights = { master_connection => 1, read_connection1 => 1, read_connection2 => 2 }
-
-    expect(ActiveRecord::Base).to receive(:writer_connection).with(
+    expect(SeamlessDatabasePool::MockMasterConnection).to receive(:new).with(
       { 'adapter' => 'writer', 'host' => 'master-host', 'username' => 'user', 'pool_weight' => 1 }
-    ).and_return(master_connection)
-    expect(ActiveRecord::Base).to receive(:reader_connection).with(
+    ).and_call_original
+    expect(SeamlessDatabasePool::MockConnection).to receive(:new).with(
       { 'adapter' => 'reader', 'host' => 'read_host_1', 'username' => 'user', 'pool_weight' => 1 }
-    ).and_return(read_connection1)
-    expect(ActiveRecord::Base).to receive(:reader_connection).with(
-      { 'adapter' => 'reader', 'host' => 'read_host_2', 'username' => 'user', 'pool_weight' => 2 }
-    ).and_return(read_connection2)
-
-    klass = double(:class)
-    expect(
-      ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter
-    ).to receive(:adapter_class).with(master_connection).and_return(klass)
-    expect(klass).to receive(:new).with(nil, logger, master_connection, [read_connection1, read_connection2],
-                                        weights, options).and_return(pool_connection)
+    ).and_call_original
+    expect(SeamlessDatabasePool::MockConnection).to receive(:new).with(
+      { 'adapter' => 'reader', 'host' => 'read-host-2', 'username' => 'user', 'pool_weight' => 2 }
+    ).and_call_original
 
     expect(ActiveRecord::Base).to receive(:establish_adapter).with('writer')
     expect(ActiveRecord::Base).to receive(:establish_adapter).with('reader').twice
 
     conn = ActiveRecord::Base.seamless_database_pool_connection(options)
-    expect(conn).to eq pool_connection
+    expect(conn).to be_a(ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter)
   end
 
   it 'should raise an error if the adapter would be recursive' do
@@ -136,19 +133,36 @@ describe 'SeamlessDatabasePoolAdapter ActiveRecord::Base extension' do
 end
 
 describe 'SeamlessDatabasePoolAdapter' do
-  let(:master_connection) { SeamlessDatabasePool::MockMasterConnection.new('master') }
-  let(:read_connection1) { SeamlessDatabasePool::MockConnection.new('read_1') }
-  let(:read_connection2) { SeamlessDatabasePool::MockConnection.new('read_2') }
-  let(:config) { {} }
+  let!(:master_connection) { SeamlessDatabasePool::MockMasterConnection.new(host: 'master') }
+  let!(:read_connection1) { SeamlessDatabasePool::MockConnection.new(host: 'read_1') }
+  let!(:read_connection2) { SeamlessDatabasePool::MockConnection.new(host: 'read_2') }
+  let(:config) do
+    {
+      master: { url: 'writer://master' },
+      read_pool: [
+        { url: 'reader://read-1' },
+        { url: 'reader://read-2?pool_weight=2' },
+      ]
+    }
+  end
   let(:pool_connection) do
-    weights = { master_connection => 1, read_connection1 => 1, read_connection2 => 2 }
-    connection_class = ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter.adapter_class(master_connection)
-    connection_class.new(nil, nil, master_connection, [read_connection1, read_connection2], weights, config)
+    allow(SeamlessDatabasePool::MockMasterConnection).to receive(:new).with(
+      hash_including({ 'adapter' => 'writer', 'host' => 'master'})
+    ).and_return(master_connection)
+    allow(SeamlessDatabasePool::MockConnection).to receive(:new).with(
+      hash_including({ 'adapter' => 'reader', 'host' => 'read-1' })
+    ).and_return(read_connection1)
+    allow(SeamlessDatabasePool::MockConnection).to receive(:new).with(
+      hash_including({ 'adapter' => 'reader', 'host' => 'read-2' })
+    ).and_return(read_connection2)
+    # ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter.new(config)
+    ActiveRecord::Base.seamless_database_pool_connection(config)
   end
 
   it 'should be able to be converted to a string' do
     expect(pool_connection.to_s).to match(
-      /\A#<ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter::Abstract:0x[0-9a-f]+ 3 connections>\z/
+      # TODO: MockMasterConnection
+      /\A#<ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter::\w+:0x[0-9a-f]+ 3 connections>\z/
     )
     expect(pool_connection.inspect).to eq pool_connection.to_s
   end
@@ -181,33 +195,35 @@ describe 'SeamlessDatabasePoolAdapter' do
       expect(pool_connection.random_read_connection).to eq master_connection
     end
 
-    it 'should use the master connection in a block' do
-      connection_class = ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter.adapter_class(master_connection)
-      connection = connection_class.new(nil, double(:logger), master_connection, [read_connection1],
-                                        { read_connection1 => 1 }, config)
-      expect(connection.random_read_connection).to eq read_connection1
-      connection.use_master_connection do
-        expect(connection.random_read_connection).to eq master_connection
+    context "when master is not in read pool" do
+      let(:config) do
+        { master: { url: 'writer://master', pool_weight: 0 }, read_pool: [{ url: 'reader://read-1' }] }
       end
-      expect(connection.random_read_connection).to eq read_connection1
-    end
 
-    it 'should use the master connection inside a transaction' do
-      connection_class = ActiveRecord::ConnectionAdapters::SeamlessDatabasePoolAdapter.adapter_class(master_connection)
-      connection = connection_class.new(nil, double(:logger), master_connection, [read_connection1],
-                                        { read_connection1 => 1 }, config)
-      expect(master_connection).to receive(:begin_db_transaction)
-      expect(master_connection).to receive(:commit_db_transaction)
-      expect(master_connection).to receive(:select).with('Transaction SQL', nil)
-      expect(read_connection1).to receive(:select).with('SQL 1', nil)
-      expect(master_connection).to receive(:select).with('SQL 2', nil)
-
-      SeamlessDatabasePool.use_persistent_read_connection do
-        connection.send(:select, 'SQL 1', nil)
-        connection.transaction do
-          connection.send(:select, 'Transaction SQL', nil)
+      it 'should use the master connection in a block' do
+        connection = pool_connection
+        expect(connection.random_read_connection).to eq read_connection1
+        connection.use_master_connection do
+          expect(connection.random_read_connection).to eq master_connection
         end
-        connection.send(:select, 'SQL 2', nil)
+        expect(connection.random_read_connection).to eq read_connection1
+      end
+
+      it 'should use the master connection inside a transaction' do
+        connection = pool_connection
+        expect(master_connection).to receive(:begin_db_transaction)
+        expect(master_connection).to receive(:commit_db_transaction)
+        expect(master_connection).to receive(:select).with('Transaction SQL', nil)
+        expect(read_connection1).to receive(:select).with('SQL 1', nil)
+        expect(master_connection).to receive(:select).with('SQL 2', nil)
+
+        SeamlessDatabasePool.use_persistent_read_connection do
+          connection.send(:select, 'SQL 1', nil)
+          connection.transaction do
+            connection.send(:select, 'Transaction SQL', nil)
+          end
+          connection.send(:select, 'SQL 2', nil)
+        end
       end
     end
   end

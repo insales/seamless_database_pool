@@ -51,6 +51,9 @@ module ActiveRecord
         raise AdapterNotSpecified.new('database configuration does not specify adapter') unless adapter
         raise AdapterNotFound.new('database pool must specify adapters') if adapter == 'seamless_database_pool'
 
+        adapter_method = "#{adapter}_connection"
+        return if respond_to?(adapter_method)
+
         begin
           require 'rubygems'
           gem "activerecord-#{adapter}-adapter"
@@ -65,7 +68,6 @@ module ActiveRecord
           end
         end
 
-        adapter_method = "#{adapter}_connection"
         return if respond_to?(adapter_method)
 
         raise AdapterNotFound, "database configuration specifies nonexistent #{adapter} adapter"
