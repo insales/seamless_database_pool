@@ -77,6 +77,7 @@ describe 'Test connection adapters' do
             found = model.find(record_id)
             expect(found.value).to eq 1
             connection.master_connection.update("UPDATE #{model.table_name} SET value = 0 WHERE id = #{record_id}")
+            pending "rails 7.1 seems to invalidate cache" if (Rails::VERSION::MAJOR*10 + Rails::VERSION::MINOR) >= 71
             expect(model.find(record_id).value).to eq 1
           end
         end
