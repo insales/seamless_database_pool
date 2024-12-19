@@ -24,7 +24,7 @@ module ActiveRecord
         config[:read_pool]&.each_with_index do |read_config, i|
           read_config = default_config.merge(read_config).with_indifferent_access
           if (url = read_config.delete(:url))
-            master_config.merge!(ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.new(url).to_hash)
+            read_config.merge!(ActiveRecord::DatabaseConfigurations::ConnectionUrlResolver.new(url).to_hash)
           end
           read_config[:pool_weight] = read_config[:pool_weight].to_i
           next unless read_config[:pool_weight] > 0
